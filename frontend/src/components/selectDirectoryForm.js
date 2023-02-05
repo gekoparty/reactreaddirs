@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Formik, Form, Field } from 'formik';
+import Button from '@mui/material/Button';
+import TextField from '@mui/material/TextField';
+
+import FormControl from '@mui/material/FormControl';
+import { InputLabel } from '@mui/material';
+
+
 
 const SelectDirectoryForm = () => {
   const [directories, setDirectories] = useState([]);
@@ -26,15 +33,26 @@ const SelectDirectoryForm = () => {
       }}
       onSubmit={handleSubmit}
     >
-      {({ isSubmitting }) => (
-        <Form>
-          <div>
-            <label htmlFor="directory">Enter directory name:</label>
-            <Field type="text" id="directory" name="directory" />
-          </div>
-          <button type="submit" disabled={isSubmitting}>
+      {({ values, handleChange, isSubmitting }) => (
+        <Form style={{marginTop: "30px"}}>
+          <FormControl>
+            <InputLabel htmlFor="directory"></InputLabel>
+            <TextField
+            color="warning"
+            size='small'
+            label="Enter directory name"
+            id="directory"
+            name="directory"
+            value={values.directory}
+            onChange={handleChange}
+          />
+          </FormControl>
+          <Button 
+          variant="contained"
+          color="primary"  
+          type="submit" disabled={isSubmitting}>
             Submit
-          </button>
+          </Button>
         </Form>
       )}
     </Formik>
