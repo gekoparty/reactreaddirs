@@ -160,10 +160,10 @@ function EnhancedTableHead(props) {
 
   return (
     <TableHead>
-      <TableRow>
-        <TableCell padding="checkbox">
+      <StyledTableRow>
+        <StyledTableCell padding="checkbox">
           <Checkbox
-            color="primary"
+            color="default"
             indeterminate={numSelected > 0 && numSelected < rowCount}
             checked={rowCount > 0 && numSelected === rowCount}
             onChange={onSelectAllClick}
@@ -171,9 +171,9 @@ function EnhancedTableHead(props) {
               "aria-label": "select all desserts",
             }}
           />
-        </TableCell>
+        </StyledTableCell>
         {headCells.map((headCell) => (
-          <TableCell
+          <StyledTableCell
             key={headCell.id}
             align={headCell.numeric ? "right" : "left"}
             padding={headCell.disablePadding ? "none" : "normal"}
@@ -191,9 +191,9 @@ function EnhancedTableHead(props) {
                 </Box>
               ) : null}
             </TableSortLabel>
-          </TableCell>
+          </StyledTableCell>
         ))}
-      </TableRow>
+      </StyledTableRow>
     </TableHead>
   );
 }
@@ -327,6 +327,8 @@ const DirectoryTable = ({ directories }) => {
   const emptyRows =
     page > 0 ? Math.max(0, (1 + page) * rowsPerPage - directories.length) : 0;
 
+    
+
   return (
     <>
       <Box sx={{ width: "100%" }}>
@@ -339,6 +341,8 @@ const DirectoryTable = ({ directories }) => {
               size={dense ? "small" : "medium"}
             >
               <EnhancedTableHead
+                classes={{ head: tableCellClasses.head, body: tableCellClasses.body }}
+                component={StyledTableCell}
                 numSelected={selected.length}
                 order={order}
                 orderBy={orderBy}
@@ -346,6 +350,7 @@ const DirectoryTable = ({ directories }) => {
                 onRequestSort={handleRequestSort}
                 rowCount={directories.length}
               />
+              
 
               {/* <TableHead>
             <TableRow>
@@ -362,7 +367,7 @@ const DirectoryTable = ({ directories }) => {
                     const labelId = `enhanced-table-checkbox-${index}`;
 
                     return (
-                      <TableRow
+                      <StyledTableRow
                         hover
                         onClick={(event) => handleClick(event, row.name)}
                         role="checkbox"
@@ -380,19 +385,17 @@ const DirectoryTable = ({ directories }) => {
                             }}
                           />
                         </TableCell>
-                        <TableCell
+                        <StyledTableCell
                           component="th"
                           id={labelId}
                           scope="row"
                           padding="none"
                         >
                           {row.name}
-                        </TableCell>
-                        <TableCell align="right">{row.calories}</TableCell>
-                        <TableCell align="right">{row.fat}</TableCell>
-                        <TableCell align="right">{row.carbs}</TableCell>
-                        <TableCell align="right">{row.protein}</TableCell>
-                      </TableRow>
+                        </StyledTableCell>
+                        <TableCell align="center">1</TableCell>
+                        
+                      </StyledTableRow>
                     );
                   })}
                 {emptyRows > 0 && (
@@ -417,7 +420,7 @@ const DirectoryTable = ({ directories }) => {
             </Table>
           </TableContainer>
           <TablePagination
-            rowsPerPageOptions={[5, 10, 25]}
+            rowsPerPageOptions={[5,10,25, 50, { value: -1, label: 'All' }]}
             component="div"
             count={directories.length}
             rowsPerPage={rowsPerPage}
