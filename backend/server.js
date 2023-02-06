@@ -17,16 +17,7 @@ dotenv.config();
 
 mongoose.set('strictQuery', false);
 
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
-  .then(() => {
-    console.log("Connected to DB");
-  })
-  .catch((err) => {
-    console.log(err.message);
-  });
+connectToDB();
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
@@ -41,7 +32,10 @@ app.post("/api/directories", async (req, res) => {
     const directoryNames = await fastGlob(`${directory}/**/`, {
       onlyDirectories: true,
     });
-    const subDirectoryNames = directoryNames.map(directoryName => path.parse(directoryName).name);
+    const subDirectoryNames = directoryNames.map((directoryName, index) => ({
+      key: index,
+      name: path.parse(directoryName).base,
+    }))
     res.status(200).json({ directories: subDirectoryNames });
   } catch (error) {
     console.error(error.message);
@@ -53,3 +47,17 @@ app.post("/api/directories", async (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`)
 });
+
+
+
+async function connectToDB() {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    });
+    console.log("Connected to DB");
+  } catch (err) {
+    console.error(err.message);
+  }
+}

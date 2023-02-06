@@ -3,9 +3,10 @@ import axios from 'axios';
 import { Formik, Form, Field } from 'formik';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
+import Table from '@mui/material/Table'
 
 import FormControl from '@mui/material/FormControl';
-import { InputLabel } from '@mui/material';
+import { InputLabel, TableBody,TableHead, TableRow,TableCell } from '@mui/material';
 
 
 
@@ -27,6 +28,7 @@ const SelectDirectoryForm = () => {
  
 
   return (
+    <>
     <Formik
       initialValues={{
         directory: '',
@@ -56,6 +58,21 @@ const SelectDirectoryForm = () => {
         </Form>
       )}
     </Formik>
+    <Table>
+    <TableHead>
+      <TableRow>
+        <TableCell>Directory Name</TableCell>
+      </TableRow>
+    </TableHead>
+    <TableBody>
+    {directories.map(({ key, name }) => (
+    <TableRow key={key}>
+      <TableCell>{name}</TableCell>
+    </TableRow>
+  ))}
+    </TableBody>
+  </Table>
+  </>
   );
 };
 
