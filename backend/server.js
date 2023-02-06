@@ -24,6 +24,8 @@ app.get("/", (req, res) => {
 });
 
 app.post("/api/directories", async (req, res) => {
+  console.log(req.body)
+  console.log(379*3)
   const directory = req.body.directory;
   console.log(`Received directory name: ${directory}`);
   console.log(`Reading directory: ${directory}`);
