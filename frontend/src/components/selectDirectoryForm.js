@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState,useEffect } from "react";
 import axios from "axios";
 import { Formik, Form, Field } from "formik";
 import Button from "@mui/material/Button";
@@ -12,6 +12,9 @@ import DirectoryTable from "./directoryTable";
 
 const SelectDirectoryForm = () => {
   const [directories, setDirectories] = useState([]);
+  const [savedDirectories, setSavedDirectories] = useState([]);
+const [existingDirectories, setExistingDirectories] = useState([]);
+
 
   const fetchDirectories = async (values, { setSubmitting }) => {
     try {
@@ -20,7 +23,6 @@ const SelectDirectoryForm = () => {
         directory: values.directory,
       });
       setDirectories(response.data.directories);
-      console.log("Directory names:", response.data.directories);
     } catch (error) {
       console.error(error);
     } finally {
@@ -34,19 +36,32 @@ const handleSave = async (values, {setSubmitting}) => {
   try {
   const response = await axios.post("api/directories/save", {
     directories,
-    volumeNumber,
+    volumeName: volumeNumber.toString(),
   });
   if (response.status === 200) {
+    await new Promise(resolve => {
+      setSavedDirectories(response.data.savedDirectories);
+      setExistingDirectories(response.data.existingDirectories);
+      resolve();
+    });
+      
+    
     console.log("success")
   } else {
-    // Handle error
+    console.error("Error while saving the directories");
   }
 } catch (error) {
-  // Handle error
+  console.error(error);
+    console.error("Error while saving the directories");
 } finally {
   setSubmitting(false);
 }
 };
+
+useEffect(() => {
+  console.log(existingDirectories);
+  console.log(savedDirectories);
+}, [savedDirectories, existingDirectories]);
   
 
   return (

@@ -2,7 +2,9 @@ import dotenv from 'dotenv';
 import express from 'express';
 import fastGlob from 'fast-glob';
 import path from 'path';
-import mongoose from 'mongoose'
+import mongoose from 'mongoose';
+import DirectoryName from './models/directoryNameSchema.js';
+
 
 
 const port = process.env.PORT || 5000;
@@ -44,14 +46,23 @@ app.post("/api/directories", async (req, res) => {
 });
 
 app.post("/api/directories/save", async (req, res) => {
-  const { directories, volumeNumber } = req.body;
+  const { directories, volumeName } = req.body;
   try {
-    // You can process the data here and save it to a database or do any other logic you need
-    // For example, you can save the data to a MongoDB collection:
-    // const directory = new Directory({ directories, volumeNumber });
-    // await directory.save();
-    console.log(volumeNumber)
-    res.status(200).json({ message: "Directories saved successfully." });
+    const savedDirectories = [];
+    const existingDirectories = [];
+
+    for(const directory of directories) {
+        const existingDirectory = await DirectoryName.findOne({name: directory.name});
+        if(!existingDirectory) {
+          const NewDirectory = new DirectoryName({name: directory.name, volumeName});
+          await NewDirectory.save();
+          savedDirectories.push(directory)
+        } else {
+          existingDirectories.push(directory)
+        }
+    }
+    console.log(savedDirectories);
+    res.status(200).json({savedDirectories, existingDirectories});
   } catch (error) {
     console.error(error.message);
     res.status(500).json({ error: error.message });
