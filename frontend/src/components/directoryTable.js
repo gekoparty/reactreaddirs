@@ -3,12 +3,6 @@ import PropTypes from "prop-types";
 import Checkbox from "@mui/material/Checkbox";
 import Box from "@mui/material/Box";
 import TableSortLabel from "@mui/material/TableSortLabel";
-import Toolbar from "@mui/material/Toolbar";
-import { alpha } from "@mui/material/styles";
-import Typography from "@mui/material/Typography";
-import Tooltip from "@mui/material/Tooltip";
-import IconButton from "@mui/material/IconButton";
-import FilterListIcon from "@mui/icons-material/FilterList";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Switch from "@mui/material/Switch";
 import {
@@ -18,12 +12,15 @@ import {
   Table,
   TableContainer,
   Paper,
-  TablePagination,
+  Button,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import TableCell, { tableCellClasses } from "@mui/material/TableCell";
 import { visuallyHidden } from "@mui/utils";
-import DeleteIcon from "@mui/icons-material/Delete";
+
+import { descendingComparator, getComparator, stableSort } from "../logic/sort";
+import Pagination from "../logic/pagination";
+import EnhancedTableToolbar from "./toolbar";
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   [`&.${tableCellClasses.head}`]: {
@@ -45,34 +42,6 @@ const StyledTableRow = styled(TableRow)(({ theme }) => ({
   },
 }));
 
-function descendingComparator(a, b, orderBy) {
-  if (b[orderBy] < a[orderBy]) {
-    return -1;
-  }
-  if (b[orderBy] > a[orderBy]) {
-    return 1;
-  }
-  return 0;
-}
-
-function getComparator(order, orderBy) {
-  return order === "desc"
-    ? (a, b) => descendingComparator(a, b, orderBy)
-    : (a, b) => -descendingComparator(a, b, orderBy);
-}
-
-function stableSort(array, comparator) {
-  const stabilizedThis = array.map((el, index) => [el, index]);
-  stabilizedThis.sort((a, b) => {
-    const order = comparator(a[0], b[0]);
-    if (order !== 0) {
-      return order;
-    }
-    return a[1] - b[1];
-  });
-  return stabilizedThis.map((el) => el[0]);
-}
-
 function EnhancedTableHead(props) {
   const {
     onSelectAllClick,
@@ -93,70 +62,10 @@ function EnhancedTableHead(props) {
       disablePadding: true,
       label: "Name",
     },
-    {id: "volume",
-    numeric: false,
-    disablePadding: true,
-    label: "Volume"
-}
+    { id: "volume", numeric: false, disablePadding: true, label: "Volume" },
   ];
 
-  function EnhancedTableToolbar(props) {
-    const { numSelected } = props;
-
-    return (
-      <Toolbar
-        sx={{
-          pl: { sm: 2 },
-          pr: { xs: 1, sm: 1 },
-          ...(numSelected > 0 && {
-            bgcolor: (theme) =>
-              alpha(
-                theme.palette.primary.main,
-                theme.palette.action.activatedOpacity
-              ),
-          }),
-        }}
-      >
-        {numSelected > 0 ? (
-          <Typography
-            sx={{ flex: "1 1 100%" }}
-            color="inherit"
-            variant="subtitle1"
-            component="div"
-          >
-            {numSelected} selected
-          </Typography>
-        ) : (
-          <Typography
-            sx={{ flex: "1 1 100%" }}
-            variant="h6"
-            id="tableTitle"
-            component="div"
-          >
-            Nutrition
-          </Typography>
-        )}
-
-        {numSelected > 0 ? (
-          <Tooltip title="Delete">
-            <IconButton>
-              <DeleteIcon />
-            </IconButton>
-          </Tooltip>
-        ) : (
-          <Tooltip title="Filter list">
-            <IconButton>
-              <FilterListIcon />
-            </IconButton>
-          </Tooltip>
-        )}
-      </Toolbar>
-    );
-  }
-
-  EnhancedTableToolbar.propTypes = {
-    numSelected: PropTypes.number.isRequired,
-  };
+ 
 
   return (
     <TableHead>
@@ -168,7 +77,7 @@ function EnhancedTableHead(props) {
             checked={rowCount > 0 && numSelected === rowCount}
             onChange={onSelectAllClick}
             inputProps={{
-              "aria-label": "select all desserts",
+              "aria-label": "select all",
             }}
           />
         </StyledTableCell>
@@ -207,63 +116,7 @@ EnhancedTableHead.propTypes = {
   rowCount: PropTypes.number.isRequired,
 };
 
-function EnhancedTableToolbar(props) {
-  const { numSelected } = props;
 
-  return (
-    <Toolbar
-      sx={{
-        pl: { sm: 2 },
-        pr: { xs: 1, sm: 1 },
-        ...(numSelected > 0 && {
-          bgcolor: (theme) =>
-            alpha(
-              theme.palette.primary.main,
-              theme.palette.action.activatedOpacity
-            ),
-        }),
-      }}
-    >
-      {numSelected > 0 ? (
-        <Typography
-          sx={{ flex: "1 1 100%" }}
-          color="inherit"
-          variant="subtitle1"
-          component="div"
-        >
-          {numSelected} selected
-        </Typography>
-      ) : (
-        <Typography
-          sx={{ flex: "1 1 100%" }}
-          variant="h6"
-          id="tableTitle"
-          component="div"
-        >
-          Directories
-        </Typography>
-      )}
-
-      {numSelected > 0 ? (
-        <Tooltip title="Delete">
-          <IconButton>
-            <DeleteIcon />
-          </IconButton>
-        </Tooltip>
-      ) : (
-        <Tooltip title="Filter list">
-          <IconButton>
-            <FilterListIcon />
-          </IconButton>
-        </Tooltip>
-      )}
-    </Toolbar>
-  );
-}
-
-EnhancedTableToolbar.propTypes = {
-  numSelected: PropTypes.number.isRequired,
-};
 
 const DirectoryTable = ({ directories }) => {
   const [order, setOrder] = useState("asc");
@@ -327,7 +180,6 @@ const DirectoryTable = ({ directories }) => {
   const emptyRows =
     page > 0 ? Math.max(0, (1 + page) * rowsPerPage - directories.length) : 0;
 
-    
 
   return (
     <>
@@ -341,7 +193,10 @@ const DirectoryTable = ({ directories }) => {
               size={dense ? "small" : "medium"}
             >
               <EnhancedTableHead
-                classes={{ head: tableCellClasses.head, body: tableCellClasses.body }}
+                classes={{
+                  head: tableCellClasses.head,
+                  body: tableCellClasses.body,
+                }}
                 component={StyledTableCell}
                 numSelected={selected.length}
                 order={order}
@@ -350,23 +205,15 @@ const DirectoryTable = ({ directories }) => {
                 onRequestSort={handleRequestSort}
                 rowCount={directories.length}
               />
-              
-
-              {/* <TableHead>
-            <TableRow>
-              <StyledTableCell>Name</StyledTableCell>
-              <StyledTableCell align="right">Volume</StyledTableCell>
-            </TableRow>
-          </TableHead> */}
 
               <TableBody>
-                {stableSort(directories, getComparator(order, orderBy))
-                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                  .map((row, index) => {
-                    const isItemSelected = isSelected(row.name);
-                    const labelId = `enhanced-table-checkbox-${index}`;
+              {stableSort(directories, getComparator(order, orderBy), descendingComparator)
+            .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+            .map((row, index) => {
+              const isItemSelected = isSelected(row.name);
+              const labelId = `enhanced-table-checkbox-${index}`;
 
-                    return (
+              return (
                       <StyledTableRow
                         hover
                         onClick={(event) => handleClick(event, row.name)}
@@ -385,14 +232,14 @@ const DirectoryTable = ({ directories }) => {
                             }}
                           />
                         </TableCell>
-                        <StyledTableCell
+                        <TableCell
                           component="th"
                           id={labelId}
                           scope="row"
                           padding="none"
                         >
                           {row.name}
-                        </StyledTableCell>
+                        </TableCell>
                         <TableCell align="center">1</TableCell>
                         
                       </StyledTableRow>
@@ -408,23 +255,13 @@ const DirectoryTable = ({ directories }) => {
                   </TableRow>
                 )}
               </TableBody>
-
-              {/* <TableBody>
-                {rows.map(({ key, name }) => (
-                  <StyledTableRow key={key}>
-                    <TableCell>{name}</TableCell>
-                    <StyledTableCell align="right">1</StyledTableCell>
-                  </StyledTableRow>
-                ))}
-              </TableBody> */}
             </Table>
           </TableContainer>
-          <TablePagination
-            rowsPerPageOptions={[5,10,25, 50, { value: -1, label: 'All' }]}
-            component="div"
-            count={directories.length}
+
+          <Pagination
             rowsPerPage={rowsPerPage}
             page={page}
+            count={directories.length}
             onPageChange={handleChangePage}
             onRowsPerPageChange={handleChangeRowsPerPage}
           />
