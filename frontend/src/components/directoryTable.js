@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import PropTypes from "prop-types";
 import Checkbox from "@mui/material/Checkbox";
 import Box from "@mui/material/Box";
@@ -21,6 +21,9 @@ import { visuallyHidden } from "@mui/utils";
 import { descendingComparator, getComparator, stableSort } from "../logic/sort";
 import Pagination from "../logic/pagination";
 import EnhancedTableToolbar from "./toolbar";
+import { Store } from "../store";
+
+
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   [`&.${tableCellClasses.head}`]: {
@@ -118,13 +121,19 @@ EnhancedTableHead.propTypes = {
 
 
 
-const DirectoryTable = ({ directories }) => {
+const DirectoryTable = (props) => {
   const [order, setOrder] = useState("asc");
   const [orderBy, setOrderBy] = useState("calories");
   const [selected, setSelected] = useState([]);
   const [page, setPage] = useState(0);
   const [dense, setDense] = useState(false);
   const [rowsPerPage, setRowsPerPage] = useState(5);
+  const { state } = useContext(Store);
+  
+  //const directories = state.directories;
+  const { directories } = props;
+
+  
 
   const handleRequestSort = (event, property) => {
     const isAsc = orderBy === property && order === "asc";
@@ -180,10 +189,14 @@ const DirectoryTable = ({ directories }) => {
   const emptyRows =
     page > 0 ? Math.max(0, (1 + page) * rowsPerPage - directories.length) : 0;
 
+    
 
   return (
+    
     <>
+    {directories ? (
       <Box sx={{ width: "100%" }}>
+        
         <Paper sx={{ width: "100%", mb: 2 }}>
           <EnhancedTableToolbar numSelected={selected.length} />
           <TableContainer>
@@ -271,7 +284,12 @@ const DirectoryTable = ({ directories }) => {
           label="Dense padding"
         />
       </Box>
+      ) : (
+        <div>nothing</div>
+      )}
     </>
+    
+    
   );
 };
 
