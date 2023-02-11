@@ -10,7 +10,7 @@ import { Store } from "../store";
 
 import FormControl from "@mui/material/FormControl";
 
-import DirectoryTable from "./directoryTable";
+import DirectoryTable from "./DirectoryTable";
 
 const SelectDirectoryForm = () => {
   const { state, dispatch: ctxDispatch } = useContext(Store);

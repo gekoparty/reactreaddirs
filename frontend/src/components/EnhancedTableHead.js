@@ -1,4 +1,4 @@
-/* import PropTypes from "prop-types";
+import PropTypes from "prop-types";
 import { visuallyHidden } from "@mui/utils";
 import {
   TableSortLabel,
@@ -9,18 +9,16 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import TableCell, { tableCellClasses } from "@mui/material/TableCell";
+import './styledTheadRow.css';
 
-const StyledTableRow = styled(TableRow)(({ theme }) => ({
-  "&:nth-of-type(odd)": {
-    backgroundColor: theme.palette.action.hover,
-  },
+const StyledTheadRow = styled(TableRow)(({ theme }) => ({
   // hide last border
   "&:last-child td, &:last-child th": {
     border: 0,
   },
 }));
 
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
+const StyledTheadCell = styled(TableCell)(({ className, theme }) => ({
   [`&.${tableCellClasses.head}`]: {
     backgroundColor: theme.palette.common.black,
     color: theme.palette.common.white,
@@ -30,17 +28,15 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
   },
 }));
 
-function EnhancedTableHead(props) {
-  const {
-    classes,
-    component,
-    numSelected,
-    order,
-    orderBy,
-    onSelectAllClick,
-    onRequestSort,
-    rowCount,
-  } = props;
+function EnhancedTableHead({
+  classes,
+  numSelected,
+  order,
+  orderBy,
+  onSelectAllClick,
+  onRequestSort,
+  rowCount,
+}) {
   const createSortHandler = (property) => (event) => {
     onRequestSort(event, property);
   };
@@ -56,9 +52,9 @@ function EnhancedTableHead(props) {
   ];
 
   return (
-    <TableHead component={component || StyledTableCell}>
-      <StyledTableRow>
-        <StyledTableCell padding="checkbox">
+    <TableHead component={"tbody" || StyledTheadCell}>
+      <StyledTheadRow>
+        <StyledTheadCell padding="checkbox">
           <Checkbox
             color="default"
             indeterminate={numSelected > 0 && numSelected < rowCount}
@@ -69,9 +65,9 @@ function EnhancedTableHead(props) {
               "aria-label": "select all",
             }}
           />
-        </StyledTableCell>
+        </StyledTheadCell>
         {headCells.map((headCell) => (
-          <StyledTableCell
+          <StyledTheadCell
             key={headCell.id}
             align={headCell.numeric ? "right" : "left"}
             padding={headCell.disablePadding ? "none" : "normal"}
@@ -89,9 +85,9 @@ function EnhancedTableHead(props) {
                 </Box>
               ) : null}
             </TableSortLabel>
-          </StyledTableCell>
+          </StyledTheadCell>
         ))}
-      </StyledTableRow>
+      </StyledTheadRow>
     </TableHead>
   );
 }
@@ -99,6 +95,7 @@ function EnhancedTableHead(props) {
 export default EnhancedTableHead;
 
 EnhancedTableHead.propTypes = {
+  classes: PropTypes.object.isRequired,
   numSelected: PropTypes.number.isRequired,
   onRequestSort: PropTypes.func.isRequired,
   onSelectAllClick: PropTypes.func.isRequired,
@@ -106,4 +103,3 @@ EnhancedTableHead.propTypes = {
   orderBy: PropTypes.string.isRequired,
   rowCount: PropTypes.number.isRequired,
 };
- */
