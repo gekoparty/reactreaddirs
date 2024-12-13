@@ -3,29 +3,31 @@ import { createContext, useReducer } from "react";
 export const Store = createContext();
 
 const initialState = {
-    directories: [],
-    savedDirectories: [],
-    existingDirectories: [],
-  };
+  directories: [],
+  savedDirectories: [],
+  existingDirectories: [],
+};
 
 const reducer = (state, action) => {
   switch (action.type) {
     case "SET_DIRECTORIES":
       return {
         ...state,
-        directories: action.payload,
+        directories: action.payload, // Updated directories with volumeName
       };
     case "UPDATE_SAVED_DIRECTORIES":
       return {
         ...state,
-        savedDirectories: action.payload
+        savedDirectories: action.payload,
       };
     case "UPDATE_EXISTING_DIRECTORIES":
       return {
         ...state,
         existingDirectories: action.payload,
       };
-      case "RESET_ARRAYS":
+    case "SET_VOLUME_NAME":
+      return { ...state, volumeName: action.payload };
+    case "RESET_ARRAYS":
       return {
         ...state,
         directories: [],
@@ -37,10 +39,9 @@ const reducer = (state, action) => {
   }
 };
 
-
 export function StoreProvider(props) {
-    const [state, dispatch] = useReducer(reducer, initialState);
-    const value = { state, dispatch };
-  
-    return <Store.Provider value={value}>{props.children}</Store.Provider>;
-  }
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const value = { state, dispatch };
+
+  return <Store.Provider value={value}>{props.children}</Store.Provider>;
+}

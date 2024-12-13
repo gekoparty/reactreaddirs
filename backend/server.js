@@ -46,26 +46,41 @@ app.post("/api/directories", async (req, res) => {
 });
 
 app.post("/api/directories/save", async (req, res) => {
-  const { directories, volumeName } = req.body;
+  const { directories } = req.body; // Destructure directories from req.body
+
+  if (!Array.isArray(directories) || directories.length === 0) {
+    return res.status(400).json({ error: "Directories must be a non-empty array." });
+  }
+
+  // Extract volumeName from the first directory object
+  const volumeName = directories[0]?.volumeName;
+  if (!volumeName) {
+    return res.status(400).json({ error: "Volume name is required." });
+  }
+
   try {
     const savedDirectories = [];
     const existingDirectories = [];
 
-    for(const directory of directories) {
-        const existingDirectory = await DirectoryName.findOne({name: directory.name});
-        if(!existingDirectory) {
-          const NewDirectory = new DirectoryName({name: directory.name, volumeName});
-          await NewDirectory.save();
-          savedDirectories.push(directory)
-        } else {
-          existingDirectories.push(directory)
-        }
+    for (const { name } of directories) {
+      const existingDirectory = await DirectoryName.findOne({ name, volumeName });
+
+      if (!existingDirectory) {
+        const newDirectory = new DirectoryName({ name, volumeName });
+        await newDirectory.save();
+        savedDirectories.push({ name, volumeName });
+      } else {
+        existingDirectories.push({ name, volumeName });
+      }
     }
-    console.log(savedDirectories);
-    res.status(200).json({savedDirectories, existingDirectories});
+
+    console.log("Saved Directories:", savedDirectories);
+    console.log("Existing Directories:", existingDirectories);
+
+    res.status(200).json({ savedDirectories, existingDirectories });
   } catch (error) {
-    console.error(error.message);
-    res.status(500).json({ error: error.message });
+    console.error("Error saving directories:", error.message);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

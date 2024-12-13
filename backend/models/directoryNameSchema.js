@@ -7,10 +7,7 @@ const directoryNameSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  volumeName: {
-    type: String,
-    required: true,
-  },
+  volumeName: { type: String, required: true }, // New field for HDD name
   createdAt: {
     type: Date,
     default: Date.now(),

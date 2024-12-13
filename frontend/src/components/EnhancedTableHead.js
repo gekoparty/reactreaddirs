@@ -9,9 +9,12 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import TableCell, { tableCellClasses } from "@mui/material/TableCell";
-import './styledTheadRow.css';
+
 
 const StyledTheadRow = styled(TableRow)(({ theme }) => ({
+  "&:nth-of-type(odd)": {
+    backgroundColor: theme.palette.primary.main,
+  },
   // hide last border
   "&:last-child td, &:last-child th": {
     border: 0,
@@ -20,8 +23,8 @@ const StyledTheadRow = styled(TableRow)(({ theme }) => ({
 
 const StyledTheadCell = styled(TableCell)(({ className, theme }) => ({
   [`&.${tableCellClasses.head}`]: {
-    backgroundColor: theme.palette.common.black,
-    color: theme.palette.common.white,
+    backgroundColor: theme.palette.secondary.main,
+    color: theme.palette.success.light,
   },
   [`&.${tableCellClasses.body}`]: {
     fontSize: 14,

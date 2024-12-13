@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import SavedDirectoryTable from "./components/screens/SavedDirectoryTable";
 import ExistingDirectoryTable from "./components/screens/ExistingDirectoryTable";
 import { StoreProvider } from "./store";
+import HomeScreen from "./components/screens/HomeScreen";
 
 function App() {
   return (
@@ -19,7 +20,11 @@ function App() {
               path="/existing-directories"
               element={<ExistingDirectoryTable />}
             />
-            <Route path="/" element={<SelectDirectoryForm />} />
+            <Route path="/" element={<HomeScreen />} />
+            <Route
+              path="/selectDirectoryForm"
+              element={<SelectDirectoryForm />}
+              />
           </Routes>
         </div>
       </BrowserRouter>
