@@ -5,6 +5,7 @@ import SavedDirectoryTable from "./components/screens/SavedDirectoryTable";
 import ExistingDirectoryTable from "./components/screens/ExistingDirectoryTable";
 import { StoreProvider } from "./store";
 import HomeScreen from "./components/screens/HomeScreen";
+import SearchTable from "./components/screens/SearchTable"
 
 function App() {
   return (
@@ -24,6 +25,10 @@ function App() {
             <Route
               path="/selectDirectoryForm"
               element={<SelectDirectoryForm />}
+              />
+               <Route
+              path="/searchTable"
+              element={<SearchTable />}
               />
           </Routes>
         </div>

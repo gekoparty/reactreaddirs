@@ -53,16 +53,16 @@ export default function PermanentDrawerLeft() {
             <ListItemIcon>
               <SearchIcon />
             </ListItemIcon>
-            <ListItemText primary="Search" />
+            <ListItemText primary="Add names" />
           </ListItemButton>
           
         </ListItem>
         <ListItem disablePadding>
-          <ListItemButton>
+          <ListItemButton component={Link} to="/SearchTable">
             <ListItemIcon>
               <MailIcon />
             </ListItemIcon>
-            <ListItemText primary="Send email" />
+            <ListItemText primary="Seach database" />
           </ListItemButton>
         </ListItem>
         <ListItem key="search" disablePadding>

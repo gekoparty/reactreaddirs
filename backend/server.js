@@ -21,8 +21,15 @@ mongoose.set('strictQuery', false);
 
 connectToDB();
 
-app.get("/", (req, res) => {
-  res.send("Hello World!");
+app.get("/api/directories", async (req, res) => {
+  try {
+    // Fetch all directories from the database
+    const directories = await DirectoryName.find({});
+    res.status(200).json({ directories });
+  } catch (error) {
+    console.error("Error fetching directories from database:", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 app.post("/api/directories", async (req, res) => {
