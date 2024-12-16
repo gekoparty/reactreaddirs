@@ -20,6 +20,8 @@ const reducer = (state, action) => {
         ...state,
         savedDirectories: action.payload,
       };
+      case "SET_EXISTING_DIRECTORIES":
+      return { ...state, existingDirectories: action.payload };
     case "UPDATE_EXISTING_DIRECTORIES":
       return {
         ...state,

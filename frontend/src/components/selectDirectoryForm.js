@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import axios from "axios";
 import { Formik, Form, Field } from "formik";
 import Button from "@mui/material/Button";
@@ -15,6 +15,7 @@ import DirectoryTable from "./DirectoryTable";
 
 const SelectDirectoryForm = () => {
   const { state, dispatch: ctxDispatch } = useContext(Store);
+  const [viewMode, setViewMode] = useState("added"); // Track view mode: "added" or "skipped"
 
   const resetArrays = () => {
     ctxDispatch({
@@ -29,20 +30,17 @@ const SelectDirectoryForm = () => {
       const response = await axios.post("api/directories", {
         directory: values.directory,
       });
-  
-      // Add volumeName to each directory
+
       const updatedDirectories = response.data.directories.map((directory) => ({
         ...directory,
-        volumeName: state.volumeName || values.volumeName, // Attach volumeName
+        volumeName: state.volumeName || values.volumeName,
       }));
-  
-      // Log the updated directories for debugging
+
       console.log("Updated directories with volumeName:", updatedDirectories);
-  
-      // Dispatch the updated directories
+
       ctxDispatch({
         type: "SET_DIRECTORIES",
-        payload: updatedDirectories, // Pass the updated directories
+        payload: updatedDirectories,
       });
     } catch (error) {
       console.error("Error fetching directories:", error);
@@ -51,20 +49,36 @@ const SelectDirectoryForm = () => {
     }
   };
 
- 
-
   const handleSave = async (values, { setSubmitting }) => {
     setSubmitting(true);
     try {
       const response = await axios.post("api/directories/save", {
-        directories: state.directories, // Each directory already includes volumeName
+        directories: state.directories,
       });
   
       if (response.status === 200) {
+        const { savedDirectories, existingDirectories } = response.data;
+  
+        // Add `existingVolume` property to each skipped directory if not already present
+        const updatedExistingDirectories = existingDirectories.map((dir) => ({
+          ...dir,
+          existingVolume: dir.existingVolume || "Unknown", // Default if missing
+        }));
+  
+        // Dispatch both saved and updated existing directories
         ctxDispatch({
           type: "SET_DIRECTORIES",
-          payload: response.data.savedDirectories, // Update saved directories
+          payload: savedDirectories,
         });
+  
+        ctxDispatch({
+          type: "SET_EXISTING_DIRECTORIES",
+          payload: existingDirectories.map((dir) => ({
+            ...dir,
+            existingVolume: dir.volumeName, // Correct assignment
+          })),
+        });
+  
         console.log("Directories saved successfully.");
       } else {
         console.error("Error while saving the directories");
@@ -76,90 +90,118 @@ const SelectDirectoryForm = () => {
     }
   };
 
+  // Toggle between viewing added and skipped directories
+  const toggleViewMode = (mode) => {
+    setViewMode(mode);
+  };
 
-  
+  // Filter directories based on the selected view mode
+  const filteredDirectories =
+  viewMode === "added"
+    ? state.directories // Show only added directories
+    : state.existingDirectories; // Show only skipped directories
+
   return (
     <>
-    <Box mt="100px">
-      {state.savedDirectories.length > 0 && (
-        <Button variant="outlined" color="error">
-          <Link style={{ textDecoration: "none" }} to="/saved-directories">
-            Saved Directories
-          </Link>
-        </Button>
-      )}
-      {state.existingDirectories.length > 0 && (
-        <Button variant="outlined" color="error">
-          <Link style={{ textDecoration: "none" }} to="/existing-directories">
-            Existing Directories
-          </Link>
-        </Button>
-      )}
-      
-      <PermanentDrawerLeft />
-      <Formik
-  initialValues={{
-    directory: "",
-    volumeName: "", // New field for HDD name
-  }}
-  onSubmit={fetchDirectories}
->
-  {({ values, handleChange, isSubmitting, setSubmitting }) => (
-    <Form style={{ marginTop: "10px" }}>
-      <FormControl>
-        <InputLabel htmlFor="volumeName"></InputLabel>
-        <Field
-          color="warning"
-          size="small"
-          label="Enter HDD name"
-          id="volumeName"
-          name="volumeName"
-          as={TextField}
-          onChange={(e) => {
-            ctxDispatch({ type: "SET_VOLUME_NAME", payload: e.target.value });
-            handleChange(e);
-          }}
-        />
-      </FormControl>
-      <FormControl>
-        <InputLabel htmlFor="directory"></InputLabel>
-        <Field
-          color="warning"
-          size="small"
-          label="Enter directory name"
-          id="directory"
-          name="directory"
-          as={TextField}
-        />
-      </FormControl>
-      <Button
-        variant="contained"
-        color="primary"
-        type="submit"
-        disabled={isSubmitting}
-      >
-        Submit
-      </Button>
-      {state.directories.length > 0 && (
-        <Button
-          style={{ marginLeft: "10px" }}
-          variant="contained"
-          color="warning"
-          type="submit"
-          disabled={isSubmitting}
-          onClick={(e) => {
-            e.preventDefault();
-            handleSave(values, { setSubmitting });
-          }}
-        >
-          Save
-        </Button>
-      )}
-    </Form>
-  )}
-</Formik>
+      <Box mt="100px">
+        {state.savedDirectories.length > 0 && (
+          <Button variant="outlined" color="error">
+            <Link style={{ textDecoration: "none" }} to="/saved-directories">
+              Saved Directories
+            </Link>
+          </Button>
+        )}
+        {state.existingDirectories.length > 0 && (
+          <Button variant="outlined" color="error">
+            <Link style={{ textDecoration: "none" }} to="/existing-directories">
+              Existing Directories
+            </Link>
+          </Button>
+        )}
 
-      <DirectoryTable directories={state.directories} />
+        <PermanentDrawerLeft />
+        <Formik
+          initialValues={{
+            directory: "",
+            volumeName: "",
+          }}
+          onSubmit={fetchDirectories}
+        >
+          {({ values, handleChange, isSubmitting, setSubmitting }) => (
+            <Form style={{ marginTop: "10px" }}>
+              <FormControl>
+                <InputLabel htmlFor="volumeName"></InputLabel>
+                <Field
+                  color="warning"
+                  size="small"
+                  label="Enter HDD name"
+                  id="volumeName"
+                  name="volumeName"
+                  as={TextField}
+                  onChange={(e) => {
+                    ctxDispatch({ type: "SET_VOLUME_NAME", payload: e.target.value });
+                    handleChange(e);
+                  }}
+                />
+              </FormControl>
+              <FormControl>
+                <InputLabel htmlFor="directory"></InputLabel>
+                <Field
+                  color="warning"
+                  size="small"
+                  label="Enter directory name"
+                  id="directory"
+                  name="directory"
+                  as={TextField}
+                />
+              </FormControl>
+              <Button
+                variant="contained"
+                color="primary"
+                type="submit"
+                disabled={isSubmitting}
+              >
+                Submit
+              </Button>
+              {state.directories.length > 0 && (
+                <Button
+                  style={{ marginLeft: "10px" }}
+                  variant="contained"
+                  color="warning"
+                  type="submit"
+                  disabled={isSubmitting}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleSave(values, { setSubmitting });
+                  }}
+                >
+                  Save
+                </Button>
+              )}
+            </Form>
+          )}
+        </Formik>
+
+        {/* Buttons to toggle views */}
+        <Box mt="20px">
+          <Button
+            variant={viewMode === "added" ? "contained" : "outlined"}
+            color="primary"
+            onClick={() => toggleViewMode("added")}
+          >
+            Show Added
+          </Button>
+          <Button
+            variant={viewMode === "skipped" ? "contained" : "outlined"}
+            color="secondary"
+            onClick={() => toggleViewMode("skipped")}
+          >
+            Show Skipped
+          </Button>
+        </Box>
+
+        {/* DirectoryTable displaying filtered directories */}
+        <DirectoryTable directories={filteredDirectories} />
       </Box>
     </>
   );

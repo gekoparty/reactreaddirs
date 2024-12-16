@@ -8,7 +8,9 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { alpha } from "@mui/material/styles";
 
 function EnhancedTableToolbar(props) {
-  const { numSelected } = props;
+  const { numSelected, onDelete } = props;
+
+  console.log("EnhancedTableToolbar numSelected:", numSelected);
 
   return (
     <Toolbar
@@ -46,7 +48,7 @@ function EnhancedTableToolbar(props) {
 
       {numSelected > 0 ? (
         <Tooltip title="Delete">
-          <IconButton>
+          <IconButton onClick={onDelete} style={{ color: "red", fontSize: "24px" }}>
             <DeleteIcon />
           </IconButton>
         </Tooltip>
@@ -65,4 +67,5 @@ export default EnhancedTableToolbar;
 
 EnhancedTableToolbar.propTypes = {
   numSelected: PropTypes.number.isRequired,
+  onDelete: PropTypes.func.isRequired, // Define onDelete as a required prop
 };

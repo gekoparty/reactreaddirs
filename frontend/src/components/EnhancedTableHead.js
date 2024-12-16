@@ -52,6 +52,7 @@ function EnhancedTableHead({
       label: "Name",
     },
     { id: "volume", numeric: false, disablePadding: true, label: "Volume" },
+    { id: "existingVolume", label: "Existing Volume", numeric: false }, // New column
   ];
 
   return (

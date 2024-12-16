@@ -70,23 +70,54 @@ app.post("/api/directories/save", async (req, res) => {
     const existingDirectories = [];
 
     for (const { name } of directories) {
+      // Log input data for debugging
+      console.log(`Processing directory: name=${name}, volumeName=${volumeName}`);
+
+      // Check if the directory exists
       const existingDirectory = await DirectoryName.findOne({ name, volumeName });
 
       if (!existingDirectory) {
+        // If not, save the new directory
         const newDirectory = new DirectoryName({ name, volumeName });
         await newDirectory.save();
         savedDirectories.push({ name, volumeName });
       } else {
-        existingDirectories.push({ name, volumeName });
+        // If it exists, add it to the existingDirectories array
+        existingDirectories.push({ name, volumeName: existingDirectory.volumeName });
       }
     }
 
     console.log("Saved Directories:", savedDirectories);
     console.log("Existing Directories:", existingDirectories);
 
+    // Return both saved and existing directories
     res.status(200).json({ savedDirectories, existingDirectories });
   } catch (error) {
     console.error("Error saving directories:", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// New delete route to remove directories based on _id
+app.post("/api/directories/delete", async (req, res) => {
+  const { ids } = req.body; // Get the array of _id from the request body
+
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: "No directory IDs provided." });
+  }
+
+  try {
+    // Delete directories by _id
+    const result = await DirectoryName.deleteMany({ _id: { $in: ids } });
+
+    // If no directories were deleted, respond accordingly
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: "No directories found with the provided IDs." });
+    }
+
+    res.status(200).json({ message: `${result.deletedCount} directories deleted successfully.` });
+  } catch (error) {
+    console.error("Error deleting directories:", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 });

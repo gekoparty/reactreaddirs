@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import PermanentDrawerLeft from "../PermanentDrawerLeft";
 import DirectoryTable from "../DirectoryTable";
+import { Box } from "@mui/material"; // Import Box component
 
 const SearchTable = () => {
   const [directories, setDirectories] = useState([]);
@@ -27,19 +28,34 @@ const SearchTable = () => {
     fetchDirectories();
   }, []);
 
+  const handleDelete = async (selected) => {
+    try {
+      console.log("Deleting directories:", selected);
+      // Make a request to delete the selected directories on the server
+      await axios.post("/api/directories/delete", { ids: selected });
+
+      // Update state to remove deleted directories by _id
+      setDirectories(directories.filter((dir) => !selected.includes(dir._id)));
+    } catch (err) {
+      console.error("Error deleting directories:", err.message);
+    }
+  };
+
   return (
-    <div style={{ display: "flex" }}>
+   <>
+         <Box mt="100px">
+   
       <PermanentDrawerLeft />
-      <div style={{ flex: 1 }}>
         {loading ? (
           <p>Loading directories...</p>
         ) : error ? (
           <p>{error}</p>
         ) : (
-          <DirectoryTable directories={directories} />
+          <DirectoryTable directories={directories} onDelete={handleDelete}/>
         )}
-      </div>
-    </div>
+</Box>
+</>
+     
   );
 };
 
