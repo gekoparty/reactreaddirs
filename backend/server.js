@@ -4,6 +4,7 @@ import fastGlob from 'fast-glob';
 import path from 'path';
 import mongoose from 'mongoose';
 import DirectoryName from './models/directoryNameSchema.js';
+import slugify from 'slugify';
 
 
 
@@ -20,6 +21,7 @@ dotenv.config();
 mongoose.set('strictQuery', false);
 
 connectToDB();
+
 
 app.get("/api/directories", async (req, res) => {
   try {
@@ -53,13 +55,12 @@ app.post("/api/directories", async (req, res) => {
 });
 
 app.post("/api/directories/save", async (req, res) => {
-  const { directories } = req.body; // Destructure directories from req.body
+  const { directories } = req.body;
 
   if (!Array.isArray(directories) || directories.length === 0) {
     return res.status(400).json({ error: "Directories must be a non-empty array." });
   }
 
-  // Extract volumeName from the first directory object
   const volumeName = directories[0]?.volumeName;
   if (!volumeName) {
     return res.status(400).json({ error: "Volume name is required." });
@@ -70,27 +71,27 @@ app.post("/api/directories/save", async (req, res) => {
     const existingDirectories = [];
 
     for (const { name } of directories) {
-      // Log input data for debugging
-      console.log(`Processing directory: name=${name}, volumeName=${volumeName}`);
+      // Generate slug with custom logic
+      const slug = slugify(name, { lower: true, strict: false });
 
-      // Check if the directory exists
-      const existingDirectory = await DirectoryName.findOne({ name, volumeName });
+      // Check if a directory with the same slug exists
+      const existingDirectory = await DirectoryName.findOne({ slug });
 
       if (!existingDirectory) {
-        // If not, save the new directory
-        const newDirectory = new DirectoryName({ name, volumeName });
+        // Save the original name and the slug
+        const newDirectory = new DirectoryName({ name, slug, volumeName });
         await newDirectory.save();
         savedDirectories.push({ name, volumeName });
       } else {
-        // If it exists, add it to the existingDirectories array
-        existingDirectories.push({ name, volumeName: existingDirectory.volumeName });
+        existingDirectories.push({
+          name, // Original name from current search
+          slug,
+          currentVolume: volumeName,
+          existingVolume: existingDirectory.volumeName, // From database
+        });
       }
     }
 
-    console.log("Saved Directories:", savedDirectories);
-    console.log("Existing Directories:", existingDirectories);
-
-    // Return both saved and existing directories
     res.status(200).json({ savedDirectories, existingDirectories });
   } catch (error) {
     console.error("Error saving directories:", error.message);

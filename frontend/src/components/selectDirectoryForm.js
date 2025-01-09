@@ -59,13 +59,14 @@ const SelectDirectoryForm = () => {
       if (response.status === 200) {
         const { savedDirectories, existingDirectories } = response.data;
   
-        // Add `existingVolume` property to each skipped directory if not already present
+        // Map skipped directories to include current and existing volume information
         const updatedExistingDirectories = existingDirectories.map((dir) => ({
           ...dir,
-          existingVolume: dir.existingVolume || "Unknown", // Default if missing
+          volumeName: dir.currentVolume, // The volume just searched
+          existingVolume: dir.existingVolume, // The volume it already exists in
         }));
   
-        // Dispatch both saved and updated existing directories
+        // Dispatch both saved and updated skipped directories
         ctxDispatch({
           type: "SET_DIRECTORIES",
           payload: savedDirectories,
@@ -73,10 +74,7 @@ const SelectDirectoryForm = () => {
   
         ctxDispatch({
           type: "SET_EXISTING_DIRECTORIES",
-          payload: existingDirectories.map((dir) => ({
-            ...dir,
-            existingVolume: dir.volumeName, // Correct assignment
-          })),
+          payload: updatedExistingDirectories,
         });
   
         console.log("Directories saved successfully.");
