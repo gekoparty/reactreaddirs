@@ -1,7 +1,6 @@
 import React, { useContext } from "react";
 import { Link } from "react-router-dom";
-import { Box } from "@mui/system";
-import Button from "@mui/material/Button";
+import { Box, Button, Stack, Typography } from "@mui/material";
 import DirectoryTable from "../DirectoryTable";
 import { Store } from "../../store";
 
@@ -14,22 +13,31 @@ const ExistingDirectoryTable = () => {
       sx={{
         boxShadow: 1,
         borderRadius: 2,
-        p: 2,
+        p: 3,
         minWidth: 650,
-        maxWidth: 800,
-        margin: "auto",
+        maxWidth: 900,
+        mx: "auto",
+        mt: 5,
       }}
     >
-       <Button variant="outlined" color="error">
-      <Link style={{textDecoration: "none"}} to="/">Home</Link>
-      </Button>
-      {state.savedDirectories.length > 0 && (
-        <Button variant="outlined" color="error">
-        <Link style={{textDecoration: "none"}} to="/saved-directories">Saved Directories</Link>
+      <Stack direction="row" spacing={2} mb={3}>
+        <Button variant="outlined" color="error" component={Link} to="/">
+          Home
         </Button>
-      )}
-      {existingDirectories.length === 0 || null ? (
-        <div>No existing directories found</div>
+        {state.savedDirectories.length > 0 && (
+          <Button
+            variant="outlined"
+            color="error"
+            component={Link}
+            to="/saved-directories"
+          >
+            Saved Directories
+          </Button>
+        )}
+      </Stack>
+
+      {existingDirectories.length === 0 ? (
+        <Typography>No existing directories found</Typography>
       ) : (
         <DirectoryTable directories={existingDirectories} />
       )}

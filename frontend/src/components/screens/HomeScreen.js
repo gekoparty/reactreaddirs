@@ -1,10 +1,8 @@
-import React from 'react';
-import PermanentDrawerLeft from '../PermanentDrawerLeft';
+import React from "react";
+import PermanentDrawerLeft from "../PermanentDrawerLeft";
 
 const HomeScreen = () => {
-  return (
-    <PermanentDrawerLeft />
-  )
-}
+  return <PermanentDrawerLeft />;
+};
 
-export default HomeScreen
+export default HomeScreen;
