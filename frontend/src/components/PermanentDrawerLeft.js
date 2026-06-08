@@ -11,7 +11,8 @@ import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import MailIcon from '@mui/icons-material/Mail';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import SearchIcon from '@mui/icons-material/Search';
 import { Link } from 'react-router-dom';
 
@@ -24,11 +25,19 @@ export default function PermanentDrawerLeft() {
         <CssBaseline />
         <AppBar
           position="fixed"
-          sx={{ width: `calc(100% - ${drawerWidth}px)`, ml: `${drawerWidth}px` }}
+          elevation={0}
+          sx={{
+            width: { md: `calc(100% - ${drawerWidth}px)` },
+            ml: { md: `${drawerWidth}px` },
+            bgcolor: 'background.paper',
+            borderBottom: 1,
+            borderColor: 'divider',
+            color: 'text.primary',
+          }}
         >
           <Toolbar>
             <Typography variant="h6" noWrap component="div">
-              Test
+              Directory Manager
             </Typography>
           </Toolbar>
         </AppBar>
@@ -39,6 +48,9 @@ export default function PermanentDrawerLeft() {
             '& .MuiDrawer-paper': {
               width: drawerWidth,
               boxSizing: 'border-box',
+              borderRight: 1,
+              borderColor: 'divider',
+              bgcolor: 'background.default',
             },
           }}
           variant="permanent"
@@ -46,28 +58,30 @@ export default function PermanentDrawerLeft() {
         >
           <Toolbar />
           <Divider />
-          <List>
+      <List>
         <ListItem disablePadding>
-
         <ListItemButton component={Link} to="/selectDirectoryForm">
             <ListItemIcon>
-              <SearchIcon />
+              <AddCircleOutlineIcon />
             </ListItemIcon>
-            <ListItemText primary="Add names" />
+            <ListItemText primary="Add directories" />
           </ListItemButton>
           
         </ListItem>
         <ListItem disablePadding>
-          <ListItemButton component={Link} to="/SearchTable">
+          <ListItemButton component={Link} to="/searchTable">
             <ListItemIcon>
-              <MailIcon />
+              <SearchIcon />
             </ListItemIcon>
-            <ListItemText primary="Seach database" />
+            <ListItemText primary="Search database" />
           </ListItemButton>
         </ListItem>
-        <ListItem key="search" disablePadding>
-          <ListItemButton>
-            <ListItemText primary="Search" />
+        <ListItem disablePadding>
+          <ListItemButton component={Link} to="/saved-directories">
+            <ListItemIcon>
+              <FolderOpenIcon />
+            </ListItemIcon>
+            <ListItemText primary="Saved directories" />
           </ListItemButton>
         </ListItem>
       </List>

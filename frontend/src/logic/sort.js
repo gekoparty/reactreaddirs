@@ -1,8 +1,15 @@
 export function descendingComparator(a, b, orderBy) {
-  if (b[orderBy] < a[orderBy]) {
+  const aValue = a?.[orderBy] ?? "";
+  const bValue = b?.[orderBy] ?? "";
+
+  if (typeof aValue === "string" && typeof bValue === "string") {
+    return bValue.localeCompare(aValue, undefined, { sensitivity: "base" });
+  }
+
+  if (bValue < aValue) {
     return -1;
   }
-  if (b[orderBy] > a[orderBy]) {
+  if (bValue > aValue) {
     return 1;
   }
   return 0;
@@ -16,6 +23,7 @@ export function getComparator(order, orderBy) {
 
 export function stableSort(array, comparator) {
   const stabilizedThis = array.map((el, index) => [el, index]);
+
   stabilizedThis.sort((a, b) => {
     const order = comparator(a[0], b[0]);
     if (order !== 0) {
@@ -23,5 +31,6 @@ export function stableSort(array, comparator) {
     }
     return a[1] - b[1];
   });
+
   return stabilizedThis.map((el) => el[0]);
 }

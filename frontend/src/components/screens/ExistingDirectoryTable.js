@@ -1,7 +1,7 @@
 import React, { useContext } from "react";
-import { Link } from "react-router-dom";
-import { Box, Button, Stack, Typography } from "@mui/material";
-import DirectoryTable from "../DirectoryTable";
+import { Box, Typography } from "@mui/material";
+import DirectoryTable from "../directoryTable"
+import PermanentDrawerLeft from "../PermanentDrawerLeft";
 import { Store } from "../../store";
 
 const ExistingDirectoryTable = () => {
@@ -11,36 +11,20 @@ const ExistingDirectoryTable = () => {
   return (
     <Box
       sx={{
-        boxShadow: 1,
-        borderRadius: 2,
-        p: 3,
-        minWidth: 650,
-        maxWidth: 900,
-        mx: "auto",
-        mt: 5,
+        px: { xs: 2, md: 4 },
+        py: 4,
       }}
     >
-      <Stack direction="row" spacing={2} mb={3}>
-        <Button variant="outlined" color="error" component={Link} to="/">
-          Home
-        </Button>
-        {state.savedDirectories.length > 0 && (
-          <Button
-            variant="outlined"
-            color="error"
-            component={Link}
-            to="/saved-directories"
-          >
-            Saved Directories
-          </Button>
-        )}
-      </Stack>
-
-      {existingDirectories.length === 0 ? (
-        <Typography>No existing directories found</Typography>
-      ) : (
+      <PermanentDrawerLeft />
+      <Box component="main" sx={{ ml: { md: "240px" }, maxWidth: 1100 }}>
+        <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+          Already existed
+        </Typography>
+        <Typography color="text.secondary" sx={{ mb: 3 }}>
+          Names skipped because they already exist in the database.
+        </Typography>
         <DirectoryTable directories={existingDirectories} />
-      )}
+      </Box>
     </Box>
   );
 };

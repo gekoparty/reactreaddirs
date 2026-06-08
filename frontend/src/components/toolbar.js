@@ -5,12 +5,13 @@ import Tooltip from "@mui/material/Tooltip";
 import IconButton from "@mui/material/IconButton";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
 import { alpha } from "@mui/material/styles";
 
 function EnhancedTableToolbar(props) {
-  const { numSelected, onDelete } = props;
-
-  console.log("EnhancedTableToolbar numSelected:", numSelected);
+  const { numSelected, onDelete, onEditSelected } = props;
+  const canDelete = Boolean(onDelete);
+  const canEdit = Boolean(onEditSelected) && numSelected === 1;
 
   return (
     <Toolbar
@@ -21,7 +22,7 @@ function EnhancedTableToolbar(props) {
           bgcolor: (theme) =>
             alpha(
               theme.palette.primary.main,
-              theme.palette.action.activatedOpacity
+              theme.palette.action.selectedOpacity
             ),
         }),
       }}
@@ -47,11 +48,22 @@ function EnhancedTableToolbar(props) {
       )}
 
       {numSelected > 0 ? (
-        <Tooltip title="Delete">
-          <IconButton onClick={onDelete} style={{ color: "red", fontSize: "24px" }}>
-            <DeleteIcon />
-          </IconButton>
-        </Tooltip>
+        <>
+          {canEdit && (
+            <Tooltip title="Edit selected directory">
+              <IconButton onClick={onEditSelected} color="primary">
+                <EditIcon />
+              </IconButton>
+            </Tooltip>
+          )}
+          {canDelete && (
+            <Tooltip title="Delete selected directories">
+              <IconButton onClick={onDelete} color="error">
+                <DeleteIcon />
+              </IconButton>
+            </Tooltip>
+          )}
+        </>
       ) : (
         <Tooltip title="Filter list">
           <IconButton>
@@ -67,5 +79,6 @@ export default EnhancedTableToolbar;
 
 EnhancedTableToolbar.propTypes = {
   numSelected: PropTypes.number.isRequired,
-  onDelete: PropTypes.func.isRequired, // Define onDelete as a required prop
+  onDelete: PropTypes.func,
+  onEditSelected: PropTypes.func,
 };

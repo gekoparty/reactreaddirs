@@ -1,46 +1,80 @@
-import React, { useContext } from "react";
-import { Box, Button, Stack, Typography } from "@mui/material";
-import { Link } from "react-router-dom";
-import DirectoryTable from "../DirectoryTable";
+import React, { useContext, useState } from "react";
+import axios from "axios";
+import { Alert, Box, Snackbar, Typography } from "@mui/material";
+import DirectoryTable from "../directoryTable"
+import PermanentDrawerLeft from "../PermanentDrawerLeft";
 import { Store } from "../../store";
 
 const SavedDirectoryTable = () => {
-  const { state } = useContext(Store);
+  const { state, dispatch } = useContext(Store);
   const savedDirectories = state.savedDirectories || [];
+  const [feedback, setFeedback] = useState(null);
+
+  const handleEdit = async (id, values) => {
+    try {
+      const response = await axios.put(`/api/directories/${id}`, values);
+      const updatedDirectory = response.data.directory;
+
+      const updateById = (directories) =>
+        directories.map((directory) =>
+          directory._id === id ? updatedDirectory : directory
+        );
+
+      dispatch({
+        type: "UPDATE_SAVED_DIRECTORIES",
+        payload: updateById(savedDirectories),
+      });
+      dispatch({
+        type: "SET_DIRECTORIES",
+        payload: updateById(state.directories || []),
+      });
+      setFeedback({
+        severity: "success",
+        message: "Directory updated.",
+      });
+    } catch (err) {
+      setFeedback({
+        severity: "error",
+        message: err.response?.data?.error || "Could not update the directory.",
+      });
+      throw err;
+    }
+  };
 
   return (
     <Box
       sx={{
-        boxShadow: 1,
-        borderRadius: 2,
-        p: 3,
-        minWidth: 650,
-        maxWidth: 900,
-        mx: "auto",
-        mt: 5,
+        px: { xs: 2, md: 4 },
+        py: 4,
       }}
     >
-      <Stack direction="row" spacing={2} mb={3}>
-        <Button variant="outlined" color="error" component={Link} to="/">
-          Home
-        </Button>
-        {state.existingDirectories.length > 0 && (
-          <Button
-            variant="outlined"
-            color="error"
-            component={Link}
-            to="/existing-directories"
+      <PermanentDrawerLeft />
+      <Box component="main" sx={{ ml: { md: "240px" }, maxWidth: 1100 }}>
+        <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+          Saved directories
+        </Typography>
+        <Typography color="text.secondary" sx={{ mb: 3 }}>
+          Directories saved during the latest scan.
+        </Typography>
+        <DirectoryTable directories={savedDirectories} onEdit={handleEdit} />
+      </Box>
+      <Snackbar
+        open={Boolean(feedback)}
+        autoHideDuration={4000}
+        onClose={() => setFeedback(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        {feedback && (
+          <Alert
+            onClose={() => setFeedback(null)}
+            severity={feedback.severity}
+            variant="filled"
+            sx={{ width: "100%" }}
           >
-            Existing Directories
-          </Button>
+            {feedback.message}
+          </Alert>
         )}
-      </Stack>
-
-      {savedDirectories.length === 0 ? (
-        <Typography>No saved directories found</Typography>
-      ) : (
-        <DirectoryTable directories={savedDirectories} />
-      )}
+      </Snackbar>
     </Box>
   );
 };

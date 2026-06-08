@@ -81,9 +81,10 @@ app.post("/api/directories/save", async (req, res) => {
         // Save the original name and the slug
         const newDirectory = new DirectoryName({ name, slug, volumeName });
         await newDirectory.save();
-        savedDirectories.push({ name, volumeName });
+        savedDirectories.push(newDirectory);
       } else {
         existingDirectories.push({
+          _id: existingDirectory._id,
           name, // Original name from current search
           slug,
           currentVolume: volumeName,
@@ -95,6 +96,43 @@ app.post("/api/directories/save", async (req, res) => {
     res.status(200).json({ savedDirectories, existingDirectories });
   } catch (error) {
     console.error("Error saving directories:", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.put("/api/directories/:id", async (req, res) => {
+  const { id } = req.params;
+  const { name, volumeName } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ error: "Invalid directory ID." });
+  }
+
+  if (!name?.trim() || !volumeName?.trim()) {
+    return res.status(400).json({ error: "Name and volume name are required." });
+  }
+
+  try {
+    const slug = slugify(name.trim(), { lower: true, strict: false });
+    const duplicate = await DirectoryName.findOne({ slug, _id: { $ne: id } });
+
+    if (duplicate) {
+      return res.status(409).json({ error: "A directory with this name already exists." });
+    }
+
+    const directory = await DirectoryName.findByIdAndUpdate(
+      id,
+      { name: name.trim(), volumeName: volumeName.trim(), slug },
+      { new: true, runValidators: true }
+    );
+
+    if (!directory) {
+      return res.status(404).json({ error: "Directory not found." });
+    }
+
+    res.status(200).json({ directory });
+  } catch (error) {
+    console.error("Error updating directory:", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 });

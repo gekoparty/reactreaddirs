@@ -8,37 +8,32 @@ import {
   TableRow,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import TableCell, { tableCellClasses } from "@mui/material/TableCell";
-
+import TableCell from "@mui/material/TableCell";
 
 const StyledTheadRow = styled(TableRow)(({ theme }) => ({
-  "&:nth-of-type(odd)": {
-    backgroundColor: theme.palette.primary.main,
-  },
-  // hide last border
   "&:last-child td, &:last-child th": {
     border: 0,
   },
 }));
 
-const StyledTheadCell = styled(TableCell)(({ className, theme }) => ({
-  [`&.${tableCellClasses.head}`]: {
-    backgroundColor: theme.palette.secondary.main,
-    color: theme.palette.success.light,
-  },
-  [`&.${tableCellClasses.body}`]: {
-    fontSize: 14,
+const StyledTheadCell = styled(TableCell)(({ theme }) => ({
+  "&.MuiTableCell-head": {
+    backgroundColor: theme.palette.common.white,
+    color: theme.palette.text.primary,
+    borderBottom: `1px solid ${theme.palette.divider}`,
+    fontWeight: 700,
   },
 }));
 
 function EnhancedTableHead({
-  classes,
   numSelected,
   order,
   orderBy,
   onSelectAllClick,
   onRequestSort,
   rowCount,
+  showSelection = true,
+  showActions = false,
 }) {
   const createSortHandler = (property) => (event) => {
     onRequestSort(event, property);
@@ -51,25 +46,37 @@ function EnhancedTableHead({
       disablePadding: true,
       label: "Name",
     },
-    { id: "volume", numeric: false, disablePadding: true, label: "Volume" },
-    { id: "existingVolume", label: "Existing Volume", numeric: false }, // New column
+    {
+      id: "volumeName",
+      numeric: false,
+      disablePadding: false,
+      label: "Volume Name",
+    },
+    {
+      id: "existingVolume",
+      numeric: false,
+      disablePadding: false,
+      label: "Existing Volume",
+    },
   ];
 
   return (
-    <TableHead component={"tbody" || StyledTheadCell}>
+    <TableHead>
       <StyledTheadRow>
-        <StyledTheadCell padding="checkbox">
-          <Checkbox
-            color="default"
-            indeterminate={numSelected > 0 && numSelected < rowCount}
-            checked={rowCount > 0 && numSelected === rowCount}
-            onChange={onSelectAllClick}
-            className={classes.head}
-            inputProps={{
-              "aria-label": "select all",
-            }}
-          />
-        </StyledTheadCell>
+        {showSelection && (
+          <StyledTheadCell padding="checkbox">
+            <Checkbox
+              color="default"
+              indeterminate={numSelected > 0 && numSelected < rowCount}
+              checked={rowCount > 0 && numSelected === rowCount}
+              onChange={onSelectAllClick}
+              inputProps={{
+                "aria-label": "select all directories",
+              }}
+            />
+          </StyledTheadCell>
+        )}
+
         {headCells.map((headCell) => (
           <StyledTheadCell
             key={headCell.id}
@@ -91,19 +98,21 @@ function EnhancedTableHead({
             </TableSortLabel>
           </StyledTheadCell>
         ))}
+        {showActions && <StyledTheadCell align="right">Actions</StyledTheadCell>}
       </StyledTheadRow>
     </TableHead>
   );
 }
 
-export default EnhancedTableHead;
-
 EnhancedTableHead.propTypes = {
-  classes: PropTypes.object.isRequired,
   numSelected: PropTypes.number.isRequired,
   onRequestSort: PropTypes.func.isRequired,
   onSelectAllClick: PropTypes.func.isRequired,
   order: PropTypes.oneOf(["asc", "desc"]).isRequired,
   orderBy: PropTypes.string.isRequired,
   rowCount: PropTypes.number.isRequired,
+  showSelection: PropTypes.bool,
+  showActions: PropTypes.bool,
 };
+
+export default EnhancedTableHead;

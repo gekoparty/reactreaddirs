@@ -1,21 +1,25 @@
 import React, { useContext, useState } from "react";
 import axios from "axios";
 import { Formik, Form, Field } from "formik";
+import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import InputLabel from "@mui/material/InputLabel";
-import { Link } from "react-router-dom";
 import { Store } from "../store";
 import Box from "@mui/material/Box";
 import PermanentDrawerLeft from "./PermanentDrawerLeft";
-
 import FormControl from "@mui/material/FormControl";
-
-import DirectoryTable from "./DirectoryTable";
+import Snackbar from "@mui/material/Snackbar";
+import Stack from "@mui/material/Stack";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import Typography from "@mui/material/Typography";
+import DirectoryTable from "./directoryTable";
 
 const SelectDirectoryForm = () => {
   const { state, dispatch: ctxDispatch } = useContext(Store);
-  const [viewMode, setViewMode] = useState("added"); // Track view mode: "added" or "skipped"
+  const [viewMode, setViewMode] = useState("added");
+  const [feedback, setFeedback] = useState(null);
 
   const resetArrays = () => {
     ctxDispatch({
@@ -27,7 +31,7 @@ const SelectDirectoryForm = () => {
   const fetchDirectories = async (values, { setSubmitting }) => {
     resetArrays();
     try {
-      const response = await axios.post("api/directories", {
+      const response = await axios.post("/api/directories", {
         directory: values.directory,
       });
 
@@ -36,14 +40,20 @@ const SelectDirectoryForm = () => {
         volumeName: state.volumeName || values.volumeName,
       }));
 
-      console.log("Updated directories with volumeName:", updatedDirectories);
-
       ctxDispatch({
         type: "SET_DIRECTORIES",
         payload: updatedDirectories,
       });
+      setFeedback({
+        severity: "success",
+        message: `${updatedDirectories.length} directories found.`,
+      });
     } catch (error) {
       console.error("Error fetching directories:", error);
+      setFeedback({
+        severity: "error",
+        message: error.response?.data?.error || "Could not read that directory.",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -52,7 +62,7 @@ const SelectDirectoryForm = () => {
   const handleSave = async (values, { setSubmitting }) => {
     setSubmitting(true);
     try {
-      const response = await axios.post("api/directories/save", {
+      const response = await axios.post("/api/directories/save", {
         directories: state.directories,
       });
   
@@ -66,9 +76,13 @@ const SelectDirectoryForm = () => {
           existingVolume: dir.existingVolume, // The volume it already exists in
         }));
   
-        // Dispatch both saved and updated skipped directories
         ctxDispatch({
           type: "SET_DIRECTORIES",
+          payload: savedDirectories,
+        });
+
+        ctxDispatch({
+          type: "UPDATE_SAVED_DIRECTORIES",
           payload: savedDirectories,
         });
   
@@ -77,47 +91,88 @@ const SelectDirectoryForm = () => {
           payload: updatedExistingDirectories,
         });
   
-        console.log("Directories saved successfully.");
+        setFeedback({
+          severity: "success",
+          message: `${savedDirectories.length} saved, ${updatedExistingDirectories.length} already existed.`,
+        });
       } else {
         console.error("Error while saving the directories");
+        setFeedback({
+          severity: "error",
+          message: "Could not save the directories.",
+        });
       }
     } catch (error) {
       console.error("Error while saving the directories", error);
+      setFeedback({
+        severity: "error",
+        message: error.response?.data?.error || "Could not save the directories.",
+      });
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Toggle between viewing added and skipped directories
-  const toggleViewMode = (mode) => {
-    setViewMode(mode);
+  const handleEdit = async (id, values) => {
+    try {
+      const response = await axios.put(`/api/directories/${id}`, values);
+      const updatedDirectory = response.data.directory;
+      const updateById = (directories) =>
+        directories.map((directory) =>
+          directory._id === id ? updatedDirectory : directory
+        );
+
+      ctxDispatch({
+        type: "SET_DIRECTORIES",
+        payload: updateById(state.directories),
+      });
+      ctxDispatch({
+        type: "UPDATE_SAVED_DIRECTORIES",
+        payload: updateById(state.savedDirectories),
+      });
+      setFeedback({
+        severity: "success",
+        message: "Directory updated.",
+      });
+    } catch (error) {
+      setFeedback({
+        severity: "error",
+        message: error.response?.data?.error || "Could not update the directory.",
+      });
+      throw error;
+    }
   };
 
-  // Filter directories based on the selected view mode
+  const toggleViewMode = (event, mode) => {
+    if (mode) {
+      setViewMode(mode);
+    }
+  };
+
   const filteredDirectories =
   viewMode === "added"
-    ? state.directories // Show only added directories
-    : state.existingDirectories; // Show only skipped directories
+    ? state.directories
+    : state.existingDirectories;
+  const canEditVisibleRows =
+    viewMode === "added" && filteredDirectories.some((directory) => directory._id);
 
   return (
-    <>
-      <Box mt="100px">
-        {state.savedDirectories.length > 0 && (
-          <Button variant="outlined" color="error">
-            <Link style={{ textDecoration: "none" }} to="/saved-directories">
-              Saved Directories
-            </Link>
-          </Button>
-        )}
-        {state.existingDirectories.length > 0 && (
-          <Button variant="outlined" color="error">
-            <Link style={{ textDecoration: "none" }} to="/existing-directories">
-              Existing Directories
-            </Link>
-          </Button>
-        )}
+    <Box sx={{ px: { xs: 2, md: 4 }, py: 4 }}>
+      <PermanentDrawerLeft />
+      <Box
+        component="main"
+        sx={{
+          ml: { md: "240px" },
+          maxWidth: 1100,
+        }}
+      >
+        <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+          Add directories
+        </Typography>
+        <Typography color="text.secondary" sx={{ mb: 3 }}>
+          Scan a folder, attach a volume name, and save new directory names.
+        </Typography>
 
-        <PermanentDrawerLeft />
         <Formik
           initialValues={{
             directory: "",
@@ -126,12 +181,17 @@ const SelectDirectoryForm = () => {
           onSubmit={fetchDirectories}
         >
           {({ values, handleChange, isSubmitting, setSubmitting }) => (
-            <Form style={{ marginTop: "10px" }}>
-              <FormControl>
+            <Form>
+              <Stack
+                direction={{ xs: "column", md: "row" }}
+                spacing={2}
+                sx={{ alignItems: { xs: "stretch", md: "flex-start" }, mb: 3 }}
+              >
+              <FormControl sx={{ minWidth: { md: 220 } }}>
                 <InputLabel htmlFor="volumeName"></InputLabel>
                 <Field
                   color="warning"
-                  size="small"
+                  size="medium"
                   label="Enter HDD name"
                   id="volumeName"
                   name="volumeName"
@@ -142,11 +202,11 @@ const SelectDirectoryForm = () => {
                   }}
                 />
               </FormControl>
-              <FormControl>
+              <FormControl sx={{ flex: 1 }}>
                 <InputLabel htmlFor="directory"></InputLabel>
                 <Field
                   color="warning"
-                  size="small"
+                  size="medium"
                   label="Enter directory name"
                   id="directory"
                   name="directory"
@@ -163,7 +223,6 @@ const SelectDirectoryForm = () => {
               </Button>
               {state.directories.length > 0 && (
                 <Button
-                  style={{ marginLeft: "10px" }}
                   variant="contained"
                   color="warning"
                   type="submit"
@@ -176,32 +235,48 @@ const SelectDirectoryForm = () => {
                   Save
                 </Button>
               )}
+              </Stack>
             </Form>
           )}
         </Formik>
 
-        {/* Buttons to toggle views */}
-        <Box mt="20px">
-          <Button
-            variant={viewMode === "added" ? "contained" : "outlined"}
-            color="primary"
-            onClick={() => toggleViewMode("added")}
-          >
-            Show Added
-          </Button>
-          <Button
-            variant={viewMode === "skipped" ? "contained" : "outlined"}
-            color="secondary"
-            onClick={() => toggleViewMode("skipped")}
-          >
-            Show Skipped
-          </Button>
-        </Box>
+        <ToggleButtonGroup
+          exclusive
+          value={viewMode}
+          onChange={toggleViewMode}
+          sx={{ mb: 2 }}
+        >
+          <ToggleButton value="added">
+            Added
+          </ToggleButton>
+          <ToggleButton value="skipped">
+            Already existed
+          </ToggleButton>
+        </ToggleButtonGroup>
 
-        {/* DirectoryTable displaying filtered directories */}
-        <DirectoryTable directories={filteredDirectories} />
+        <DirectoryTable
+          directories={filteredDirectories}
+          onEdit={canEditVisibleRows ? handleEdit : undefined}
+        />
       </Box>
-    </>
+      <Snackbar
+        open={Boolean(feedback)}
+        autoHideDuration={4000}
+        onClose={() => setFeedback(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        {feedback && (
+          <Alert
+            onClose={() => setFeedback(null)}
+            severity={feedback.severity}
+            variant="filled"
+            sx={{ width: "100%" }}
+          >
+            {feedback.message}
+          </Alert>
+        )}
+      </Snackbar>
+    </Box>
   );
 };
 
