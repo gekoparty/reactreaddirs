@@ -6,6 +6,7 @@ const directoryNameSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
+    trim: true,
   },
   slug: {
     type: String,
@@ -15,8 +16,12 @@ const directoryNameSchema = new mongoose.Schema({
   volumeName: {
     type: String,
     required: true,
+    trim: true,
   },
 });
+
+directoryNameSchema.index({ name: 1 });
+directoryNameSchema.index({ volumeName: 1, name: 1 });
 
 const DirectoryName = mongoose.model("DirectoryName", directoryNameSchema);
 

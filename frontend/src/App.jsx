@@ -5,36 +5,24 @@ import SavedDirectoryTable from "./components/screens/SavedDirectoryTable";
 import ExistingDirectoryTable from "./components/screens/ExistingDirectoryTable";
 import { StoreProvider } from "./store";
 import HomeScreen from "./components/screens/HomeScreen";
-import SearchTable from "./components/screens/SearchTable"
+import SearchTable from "./components/screens/SearchTable";
 
 function App() {
   return (
     <StoreProvider>
       <BrowserRouter>
         <div className="App">
-          <Routes default="false">
-            <Route
-              path="/saved-directories"
-              element={<SavedDirectoryTable />}
-            />
-            <Route
-              path="/existing-directories"
-              element={<ExistingDirectoryTable />}
-            />
+          <Routes>
+            <Route path="/saved-directories" element={<SavedDirectoryTable />} />
+            <Route path="/existing-directories" element={<ExistingDirectoryTable />} />
             <Route path="/" element={<HomeScreen />} />
-            <Route
-              path="/selectDirectoryForm"
-              element={<SelectDirectoryForm />}
-              />
-               <Route
-              path="/searchTable"
-              element={<SearchTable />}
-              />
+            <Route path="/selectDirectoryForm" element={<SelectDirectoryForm />} />
+            <Route path="/searchTable" element={<SearchTable />} />
           </Routes>
         </div>
       </BrowserRouter>
     </StoreProvider>
   );
 }
-//
+
 export default App;

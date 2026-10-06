@@ -1,31 +1,24 @@
 import React, { useContext } from "react";
-import { Box, Typography } from "@mui/material";
 import DirectoryTable from "../directoryTable"
-import PermanentDrawerLeft from "../PermanentDrawerLeft";
 import { Store } from "../../store";
+import PageLayout from "../PageLayout";
 
 const ExistingDirectoryTable = () => {
   const { state } = useContext(Store);
   const existingDirectories = state.existingDirectories || [];
 
   return (
-    <Box
-      sx={{
-        px: { xs: 2, md: 4 },
-        py: 4,
-      }}
+    <PageLayout
+      eyebrow="This session"
+      title="Skipped names"
+      subtitle="Names skipped during the latest save because they already existed or were duplicates in the scan."
     >
-      <PermanentDrawerLeft />
-      <Box component="main" sx={{ ml: { md: "240px" }, maxWidth: 1100 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
-          Already existed
-        </Typography>
-        <Typography color="text.secondary" sx={{ mb: 3 }}>
-          Names skipped because they already exist in the database.
-        </Typography>
-        <DirectoryTable directories={existingDirectories} />
-      </Box>
-    </Box>
+      <DirectoryTable
+        title="Skipped names"
+        directories={existingDirectories}
+        emptyMessage="No skipped names in this session yet."
+      />
+    </PageLayout>
   );
 };
 

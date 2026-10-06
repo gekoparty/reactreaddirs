@@ -3,13 +3,12 @@ import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import Tooltip from "@mui/material/Tooltip";
 import IconButton from "@mui/material/IconButton";
-import FilterListIcon from "@mui/icons-material/FilterList";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import { alpha } from "@mui/material/styles";
 
 function EnhancedTableToolbar(props) {
-  const { numSelected, onDelete, onEditSelected } = props;
+  const { title, numSelected, onDelete, onEditSelected } = props;
   const canDelete = Boolean(onDelete);
   const canEdit = Boolean(onEditSelected) && numSelected === 1;
 
@@ -43,7 +42,7 @@ function EnhancedTableToolbar(props) {
           id="tableTitle"
           component="div"
         >
-          Directories
+          {title}
         </Typography>
       )}
 
@@ -64,13 +63,7 @@ function EnhancedTableToolbar(props) {
             </Tooltip>
           )}
         </>
-      ) : (
-        <Tooltip title="Filter list">
-          <IconButton>
-            <FilterListIcon />
-          </IconButton>
-        </Tooltip>
-      )}
+      ) : null}
     </Toolbar>
   );
 }
@@ -78,7 +71,12 @@ function EnhancedTableToolbar(props) {
 export default EnhancedTableToolbar;
 
 EnhancedTableToolbar.propTypes = {
+  title: PropTypes.string,
   numSelected: PropTypes.number.isRequired,
   onDelete: PropTypes.func,
   onEditSelected: PropTypes.func,
+};
+
+EnhancedTableToolbar.defaultProps = {
+  title: "Directories",
 };

@@ -34,6 +34,7 @@ function EnhancedTableHead({
   rowCount,
   showSelection = true,
   showActions = false,
+  showExistingVolume = false,
 }) {
   const createSortHandler = (property) => (event) => {
     onRequestSort(event, property);
@@ -52,12 +53,16 @@ function EnhancedTableHead({
       disablePadding: false,
       label: "Volume Name",
     },
-    {
-      id: "existingVolume",
-      numeric: false,
-      disablePadding: false,
-      label: "Existing Volume",
-    },
+    ...(showExistingVolume
+      ? [
+          {
+            id: "existingVolume",
+            numeric: false,
+            disablePadding: false,
+            label: "Existing Volume",
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -81,7 +86,7 @@ function EnhancedTableHead({
           <StyledTheadCell
             key={headCell.id}
             align={headCell.numeric ? "right" : "left"}
-            padding={headCell.disablePadding ? "none" : "normal"}
+            padding={headCell.disablePadding && showSelection ? "none" : "normal"}
             sortDirection={orderBy === headCell.id ? order : false}
           >
             <TableSortLabel
@@ -113,6 +118,7 @@ EnhancedTableHead.propTypes = {
   rowCount: PropTypes.number.isRequired,
   showSelection: PropTypes.bool,
   showActions: PropTypes.bool,
+  showExistingVolume: PropTypes.bool,
 };
 
 export default EnhancedTableHead;

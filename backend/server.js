@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import express from 'express';
 import fastGlob from 'fast-glob';
+import fs from 'fs/promises';
 import path from 'path';
 import mongoose from 'mongoose';
 import DirectoryName from './models/directoryNameSchema.js';
@@ -22,81 +23,280 @@ mongoose.set('strictQuery', false);
 
 connectToDB();
 
+const MAX_PAGE_SIZE = 100;
+const SORTABLE_FIELDS = new Set(["name", "volumeName"]);
+
+function clampPositiveInteger(value, fallback, max = Number.MAX_SAFE_INTEGER) {
+  const parsed = Number.parseInt(value, 10);
+
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return fallback;
+  }
+
+  return Math.min(parsed, max);
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeDirectoryName(name) {
+  return String(name || "").trim();
+}
+
+function createSlug(name) {
+  return slugify(normalizeDirectoryName(name), { lower: true, strict: false });
+}
+
+function buildDirectoryQuery({ search = "", volume = "" }) {
+  const query = {};
+  const trimmedSearch = search.trim();
+  const trimmedVolume = volume.trim();
+
+  if (trimmedSearch) {
+    query.name = { $regex: escapeRegExp(trimmedSearch), $options: "i" };
+  }
+
+  if (trimmedVolume) {
+    query.volumeName = { $regex: escapeRegExp(trimmedVolume), $options: "i" };
+  }
+
+  return query;
+}
+
+function buildDirectorySearchPipeline({ query, escapedSearch, page, limit, sortBy, sortDirection }) {
+  const rankExpression = escapedSearch
+    ? {
+        $switch: {
+          branches: [
+            {
+              case: {
+                $regexMatch: {
+                  input: "$name",
+                  regex: `^${escapedSearch}$`,
+                  options: "i",
+                },
+              },
+              then: 0,
+            },
+            {
+              case: {
+                $regexMatch: {
+                  input: "$name",
+                  regex: `^${escapedSearch}`,
+                  options: "i",
+                },
+              },
+              then: 1,
+            },
+          ],
+          default: 2,
+        },
+      }
+    : 0;
+
+  return [
+    { $match: query },
+    { $addFields: { searchRank: rankExpression } },
+    { $sort: { searchRank: 1, [sortBy]: sortDirection, _id: 1 } },
+    { $skip: page * limit },
+    { $limit: limit },
+    { $project: { searchRank: 0 } },
+  ];
+}
+
+function formatDuration(startedAt) {
+  return Date.now() - startedAt;
+}
+
 
 app.get("/api/directories", async (req, res) => {
+  const startedAt = Date.now();
+  const page = Math.max(clampPositiveInteger(req.query.page, 1) - 1, 0);
+  const limit = clampPositiveInteger(req.query.limit, 25, MAX_PAGE_SIZE);
+  const sortBy = SORTABLE_FIELDS.has(req.query.sortBy) ? req.query.sortBy : "name";
+  const sortDirection = req.query.order === "desc" ? -1 : 1;
+  const query = buildDirectoryQuery({
+    search: String(req.query.search || ""),
+    volume: String(req.query.volume || ""),
+  });
+  const trimmedSearch = String(req.query.search || "").trim();
+  const escapedSearch = trimmedSearch ? escapeRegExp(trimmedSearch) : "";
+
   try {
-    // Fetch all directories from the database
-    const directories = await DirectoryName.find({});
-    res.status(200).json({ directories });
+    const [directories, totalMatching, total] = await Promise.all([
+      escapedSearch
+        ? DirectoryName.aggregate(
+            buildDirectorySearchPipeline({
+              query,
+              escapedSearch,
+              page,
+              limit,
+              sortBy,
+              sortDirection,
+            })
+          )
+        : DirectoryName.find(query)
+            .sort({ [sortBy]: sortDirection, _id: 1 })
+            .skip(page * limit)
+            .limit(limit)
+            .lean(),
+      DirectoryName.countDocuments(query),
+      DirectoryName.estimatedDocumentCount(),
+    ]);
+
+    res.status(200).json({
+      directories,
+      page: page + 1,
+      limit,
+      total,
+      totalMatching,
+      sortBy,
+      order: sortDirection === -1 ? "desc" : "asc",
+      durationMs: formatDuration(startedAt),
+    });
   } catch (error) {
     console.error("Error fetching directories from database:", error.message);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Could not search directories." });
   }
 });
 
 app.post("/api/directories", async (req, res) => {
-  
-  const directory = req.body.directory;
-  
+  const startedAt = Date.now();
+  const directory = String(req.body.directory || "").trim();
+
+  if (!directory) {
+    return res.status(400).json({ error: "Choose a folder path to scan." });
+  }
+
   try {
-    const directoryNames = await fastGlob(`${directory}/**/`, {
+    const stats = await fs.stat(directory);
+
+    if (!stats.isDirectory()) {
+      return res.status(400).json({ error: "The selected path is not a folder." });
+    }
+
+    const normalizedDirectory = directory.replace(/\\/g, "/").replace(/\/+$/, "");
+    const directoryNames = await fastGlob(`${normalizedDirectory}/**/`, {
       onlyDirectories: true,
+      unique: true,
+      suppressErrors: true,
     });
-    const subDirectoryNames = directoryNames.map((directoryName, index) => ({
-      key: index,
-      name: path.parse(directoryName).base,
-    }))
-    res.status(200).json({ directories: subDirectoryNames });
+
+    const subDirectoryNames = directoryNames
+      .map((directoryName, index) => ({
+        key: index,
+        name: path.parse(directoryName).base,
+      }))
+      .filter((directoryName) => directoryName.name);
+
+    res.status(200).json({
+      directories: subDirectoryNames,
+      scannedPath: directory,
+      count: subDirectoryNames.length,
+      durationMs: formatDuration(startedAt),
+    });
   } catch (error) {
-    console.error(error.message);
-    console.error(error.stack);
-    res.status(500).json({ error: error.message });
+    console.error("Error scanning directory:", error.message);
+    const message =
+      error.code === "ENOENT"
+        ? "That folder path does not exist."
+        : "Could not scan that folder. Check the path and permissions.";
+
+    res.status(500).json({ error: message });
   }
 });
 
 app.post("/api/directories/save", async (req, res) => {
+  const startedAt = Date.now();
   const { directories } = req.body;
+  const volumeName = normalizeDirectoryName(req.body.volumeName || directories?.[0]?.volumeName);
 
   if (!Array.isArray(directories) || directories.length === 0) {
-    return res.status(400).json({ error: "Directories must be a non-empty array." });
+    return res.status(400).json({ error: "Scan a folder before saving." });
   }
 
-  const volumeName = directories[0]?.volumeName;
   if (!volumeName) {
-    return res.status(400).json({ error: "Volume name is required." });
+    return res.status(400).json({ error: "Add a volume name before saving." });
   }
 
   try {
-    const savedDirectories = [];
-    const existingDirectories = [];
+    const uniqueBySlug = new Map();
+    const duplicateDirectories = [];
 
-    for (const { name } of directories) {
-      // Generate slug with custom logic
-      const slug = slugify(name, { lower: true, strict: false });
+    for (const directory of directories) {
+      const name = normalizeDirectoryName(directory.name);
+      const slug = createSlug(name);
 
-      // Check if a directory with the same slug exists
-      const existingDirectory = await DirectoryName.findOne({ slug });
-
-      if (!existingDirectory) {
-        // Save the original name and the slug
-        const newDirectory = new DirectoryName({ name, slug, volumeName });
-        await newDirectory.save();
-        savedDirectories.push(newDirectory);
-      } else {
-        existingDirectories.push({
-          _id: existingDirectory._id,
-          name, // Original name from current search
-          slug,
-          currentVolume: volumeName,
-          existingVolume: existingDirectory.volumeName, // From database
-        });
+      if (!name || !slug) {
+        continue;
       }
+
+      if (uniqueBySlug.has(slug)) {
+        duplicateDirectories.push({
+          name,
+          slug,
+          volumeName,
+          reason: "Duplicate name in this scan",
+        });
+        continue;
+      }
+
+      uniqueBySlug.set(slug, { name, slug, volumeName });
     }
 
-    res.status(200).json({ savedDirectories, existingDirectories });
+    const uniqueDirectories = [...uniqueBySlug.values()];
+
+    if (uniqueDirectories.length === 0) {
+      return res.status(400).json({ error: "No valid folder names were found in the scan." });
+    }
+
+    const slugs = uniqueDirectories.map((directory) => directory.slug);
+    const existingMatches = await DirectoryName.find({ slug: { $in: slugs } }).lean();
+    const existingBySlug = new Map(
+      existingMatches.map((directory) => [directory.slug, directory])
+    );
+
+    const directoriesToSave = uniqueDirectories.filter(
+      (directory) => !existingBySlug.has(directory.slug)
+    );
+
+    const existingDirectories = uniqueDirectories
+      .filter((directory) => existingBySlug.has(directory.slug))
+      .map((directory) => {
+        const existingDirectory = existingBySlug.get(directory.slug);
+
+        return {
+          _id: existingDirectory._id,
+          name: directory.name,
+          slug: directory.slug,
+          volumeName,
+          currentVolume: volumeName,
+          existingVolume: existingDirectory.volumeName,
+        };
+      });
+
+    const savedDirectories =
+      directoriesToSave.length > 0
+        ? await DirectoryName.insertMany(directoriesToSave, { ordered: false })
+        : [];
+
+    res.status(200).json({
+      savedDirectories,
+      existingDirectories,
+      duplicateDirectories,
+      summary: {
+        scanned: directories.length,
+        unique: uniqueDirectories.length,
+        saved: savedDirectories.length,
+        alreadyExisted: existingDirectories.length,
+        duplicateInScan: duplicateDirectories.length,
+        durationMs: formatDuration(startedAt),
+      },
+    });
   } catch (error) {
     console.error("Error saving directories:", error.message);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Could not save the scanned directories." });
   }
 });
 
@@ -154,7 +354,10 @@ app.post("/api/directories/delete", async (req, res) => {
       return res.status(404).json({ error: "No directories found with the provided IDs." });
     }
 
-    res.status(200).json({ message: `${result.deletedCount} directories deleted successfully.` });
+    res.status(200).json({
+      deletedCount: result.deletedCount,
+      message: `${result.deletedCount} directories deleted successfully.`,
+    });
   } catch (error) {
     console.error("Error deleting directories:", error.message);
     res.status(500).json({ error: "Internal server error" });

@@ -1,8 +1,8 @@
 import React from "react";
-import PermanentDrawerLeft from "../PermanentDrawerLeft";
+import { Navigate } from "react-router-dom";
 
 const HomeScreen = () => {
-  return <PermanentDrawerLeft />;
+  return <Navigate to="/selectDirectoryForm" replace />;
 };
 
 export default HomeScreen;

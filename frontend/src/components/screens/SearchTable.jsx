@@ -1,105 +1,117 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { Alert, Box, Snackbar, Stack, TextField, Typography } from "@mui/material";
-import PermanentDrawerLeft from "../PermanentDrawerLeft";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import SearchIcon from "@mui/icons-material/Search";
+import {
+  Alert,
+  Box,
+  Button,
+  InputAdornment,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
+import PageLayout from "../PageLayout";
 import DirectoryTable from "../directoryTable";
-import debounce from "lodash.debounce";
+
+const Metric = ({ label, value, helper }) => (
+  <Paper
+    variant="outlined"
+    sx={{
+      borderRadius: 2,
+      p: 2,
+      flex: 1,
+      minWidth: 190,
+      bgcolor: "rgba(255, 255, 255, 0.78)",
+    }}
+  >
+    <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0 }}>
+      {label}
+    </Typography>
+    <Typography variant="h5" sx={{ fontWeight: 800 }}>
+      {value}
+    </Typography>
+    {helper && (
+      <Typography variant="body2" color="text.secondary">
+        {helper}
+      </Typography>
+    )}
+  </Paper>
+);
 
 const SearchTable = () => {
   const [directories, setDirectories] = useState([]);
-  const [filteredDirectories, setFilteredDirectories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [volumeQuery, setVolumeQuery] = useState("");
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [total, setTotal] = useState(0);
+  const [totalMatching, setTotalMatching] = useState(0);
+  const [durationMs, setDurationMs] = useState(null);
+  const [sortState, setSortState] = useState({ sortBy: "name", order: "asc" });
   const [feedback, setFeedback] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    const fetchDirectories = async () => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
       setLoading(true);
       setError(null);
+
       try {
-        const response = await axios.get("/api/directories");
-        setDirectories(response.data.directories);
-        setFilteredDirectories(response.data.directories);
+        const response = await axios.get("/api/directories", {
+          params: {
+            search: searchQuery,
+            volume: volumeQuery,
+            page: page + 1,
+            limit: rowsPerPage,
+            sortBy: sortState.sortBy,
+            order: sortState.order,
+          },
+          signal: controller.signal,
+        });
+
+        setDirectories(response.data.directories || []);
+        setTotal(response.data.total || 0);
+        setTotalMatching(response.data.totalMatching || 0);
+        setDurationMs(response.data.durationMs);
       } catch (err) {
-        setError("Error fetching directories: " + err.message);
+        if (err.name === "CanceledError") return;
+
+        setDirectories([]);
+        setError(err.response?.data?.error || "Could not search the database.");
       } finally {
         setLoading(false);
       }
-    };
-
-    fetchDirectories();
-  }, []);
-
-  const handleSearch = useMemo(
-    () =>
-      debounce((query, volume, directoriesList) => {
-        const lowerQuery = query.trim().toLowerCase();
-        const lowerVolume = volume.trim().toLowerCase();
-
-        const filtered = directoriesList.filter((dir) => {
-          const name = dir.name?.toLowerCase() || "";
-          const volumeName = dir.volumeName?.toLowerCase() || "";
-          const matchesName = !lowerQuery || name.includes(lowerQuery);
-          const matchesVolume =
-            !lowerVolume || volumeName.includes(lowerVolume);
-
-          return matchesName && matchesVolume;
-        });
-
-        const sorted = filtered.sort((a, b) => {
-          const volumeA = a.volumeName?.toLowerCase() || "";
-          const volumeB = b.volumeName?.toLowerCase() || "";
-
-          if (volumeA < volumeB) return -1;
-          if (volumeA > volumeB) return 1;
-
-          const nameA = a.name?.toLowerCase() || "";
-          const nameB = b.name?.toLowerCase() || "";
-
-          if (nameA < nameB) return -1;
-          if (nameA > nameB) return 1;
-
-          return 0;
-        });
-
-        setFilteredDirectories(sorted);
-      }, 300),
-    []
-  );
-
-  useEffect(() => {
-    handleSearch(searchQuery, volumeQuery, directories);
+    }, 250);
 
     return () => {
-      handleSearch.cancel();
+      window.clearTimeout(timeout);
+      controller.abort();
     };
-  }, [searchQuery, volumeQuery, directories, handleSearch]);
+  }, [page, refreshKey, rowsPerPage, searchQuery, sortState.order, sortState.sortBy, volumeQuery]);
 
-  const onChangeSearch = (e) => {
-    setSearchQuery(e.target.value);
-  };
-
-  const onChangeVolumeSearch = (e) => {
-    setVolumeQuery(e.target.value);
+  const clearFilters = () => {
+    setSearchQuery("");
+    setVolumeQuery("");
+    setPage(0);
   };
 
   const handleDelete = async (selected) => {
     try {
-      await axios.post("/api/directories/delete", { ids: selected });
+      const response = await axios.post("/api/directories/delete", { ids: selected });
 
-      const updatedDirectories = directories.filter(
-        (dir) => !selected.includes(dir._id)
-      );
-
-      setDirectories(updatedDirectories);
       setFeedback({
         severity: "success",
-        message: `${selected.length} director${selected.length === 1 ? "y" : "ies"} deleted.`,
+        message: `${response.data.deletedCount ?? selected.length} director${
+          selected.length === 1 ? "y" : "ies"
+        } deleted.`,
       });
+      setRefreshKey((current) => current + 1);
     } catch (err) {
-      console.error("Error deleting directories:", err.message);
       setFeedback({
         severity: "error",
         message: err.response?.data?.error || "Could not delete the selected directories.",
@@ -109,18 +121,12 @@ const SearchTable = () => {
 
   const handleEdit = async (id, values) => {
     try {
-      const response = await axios.put(`/api/directories/${id}`, values);
-      const updatedDirectory = response.data.directory;
-
-      setDirectories((current) =>
-        current.map((directory) =>
-          directory._id === id ? updatedDirectory : directory
-        )
-      );
+      await axios.put(`/api/directories/${id}`, values);
       setFeedback({
         severity: "success",
         message: "Directory updated.",
       });
+      setRefreshKey((current) => current + 1);
     } catch (err) {
       setFeedback({
         severity: "error",
@@ -130,77 +136,133 @@ const SearchTable = () => {
     }
   };
 
+  const handleSortChange = (nextSort) => {
+    setSortState(nextSort);
+    setPage(0);
+  };
+
+  const handleRowsPerPageChange = (event) => {
+    setRowsPerPage(Number.parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const rangeText = useMemo(() => {
+    if (totalMatching === 0) {
+      return "0";
+    }
+
+    const start = page * rowsPerPage + 1;
+    const end = Math.min(totalMatching, start + rowsPerPage - 1);
+
+    return `${start.toLocaleString()}-${end.toLocaleString()}`;
+  }, [page, rowsPerPage, totalMatching]);
+
   return (
-    <Box sx={{ px: { xs: 2, md: 4 }, py: 4 }}>
-      <PermanentDrawerLeft />
-      <Box
-        component="main"
+    <PageLayout
+      eyebrow="Database"
+      title="Search saved folders"
+      subtitle="Filters, sorting, and pagination now run on the backend, so the browser only renders the current result page."
+    >
+      <Paper
+        variant="outlined"
         sx={{
-          ml: { md: "240px" },
-          maxWidth: 1100,
+          borderRadius: 2,
+          p: { xs: 2, md: 3 },
+          mb: 3,
+          bgcolor: "rgba(255, 255, 255, 0.86)",
         }}
       >
-      <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
-        Search database
-      </Typography>
-      <Typography color="text.secondary" sx={{ mb: 3 }}>
-        Filter folder names inside a specific volume, then edit or remove saved directories.
-      </Typography>
-      <Stack
-        direction={{ xs: "column", md: "row" }}
-        spacing={2}
-        sx={{ mb: 1.5 }}
-      >
-        <TextField
-          label="Folder name"
-          variant="outlined"
-          value={searchQuery}
-          onChange={onChangeSearch}
-          sx={{ width: "100%", maxWidth: 520 }}
-        />
-        <TextField
-          label="Volume name"
-          variant="outlined"
-          value={volumeQuery}
-          onChange={onChangeVolumeSearch}
-          sx={{ width: "100%", maxWidth: 360 }}
-        />
-      </Stack>
-      <Typography color="text.secondary" sx={{ mb: 3 }}>
-        Showing {filteredDirectories.length} of {directories.length} directories
-      </Typography>
-
-      {loading ? (
-        <Typography>Loading directories...</Typography>
-      ) : error ? (
-        <Typography color="error">{error}</Typography>
-      ) : (
-        <DirectoryTable
-          directories={filteredDirectories}
-          onDelete={handleDelete}
-          onEdit={handleEdit}
-        />
-      )}
-      </Box>
-
-      <Snackbar
-        open={Boolean(feedback)}
-        autoHideDuration={4000}
-        onClose={() => setFeedback(null)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
-        {feedback && (
-          <Alert
-            onClose={() => setFeedback(null)}
-            severity={feedback.severity}
-            variant="filled"
-            sx={{ width: "100%" }}
+        <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+          <TextField
+            label="Folder name"
+            value={searchQuery}
+            onChange={(event) => {
+              setSearchQuery(event.target.value);
+              setPage(0);
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+            sx={{ flex: 1 }}
+          />
+          <TextField
+            label="Volume"
+            value={volumeQuery}
+            onChange={(event) => {
+              setVolumeQuery(event.target.value);
+              setPage(0);
+            }}
+            sx={{ width: { xs: "100%", md: 260 } }}
+          />
+          <Button
+            variant="outlined"
+            color="inherit"
+            startIcon={<RestartAltIcon />}
+            onClick={clearFilters}
           >
+            Clear
+          </Button>
+        </Stack>
+
+        {feedback && (
+          <Alert severity={feedback.severity} onClose={() => setFeedback(null)} sx={{ mt: 2 }}>
             {feedback.message}
           </Alert>
         )}
-      </Snackbar>
-    </Box>
+        {error && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {error}
+          </Alert>
+        )}
+      </Paper>
+
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: 2,
+          mb: 3,
+        }}
+      >
+        <Metric
+          label="Matching"
+          value={totalMatching.toLocaleString()}
+          helper="Rows matching current filters"
+        />
+        <Metric
+          label="Database total"
+          value={total.toLocaleString()}
+          helper="Estimated saved folders"
+        />
+        <Metric label="Showing" value={rangeText} helper="Current page range" />
+        <Metric
+          label="Backend time"
+          value={durationMs == null ? "-" : `${durationMs} ms`}
+          helper="Latest search response"
+        />
+      </Box>
+
+      <DirectoryTable
+        title="Database results"
+        directories={directories}
+        loading={loading}
+        onDelete={handleDelete}
+        onEdit={handleEdit}
+        serverMode
+        totalCount={totalMatching}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        onPageChange={(event, nextPage) => setPage(nextPage)}
+        onRowsPerPageChange={handleRowsPerPageChange}
+        onSortChange={handleSortChange}
+        rowsPerPageOptions={[10, 25, 50, 100]}
+        emptyMessage="No folders match these filters."
+      />
+    </PageLayout>
   );
 };
 

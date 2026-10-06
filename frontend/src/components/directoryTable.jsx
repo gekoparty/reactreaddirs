@@ -1,24 +1,26 @@
-import React, { useEffect, useState } from "react";
-import Checkbox from "@mui/material/Checkbox";
-import Box from "@mui/material/Box";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Switch from "@mui/material/Switch";
+import React, { useEffect, useMemo, useState } from "react";
 import EditIcon from "@mui/icons-material/Edit";
 import {
+  Box,
   Button,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   IconButton,
-  TableBody,
-  TableRow,
-  Table,
-  TableContainer,
+  LinearProgress,
   Paper,
+  Switch,
+  Table,
+  TableBody,
   TableCell,
+  TableContainer,
+  TableRow,
   TextField,
   Tooltip,
+  Typography,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 
@@ -62,7 +64,7 @@ const StyledTableRow = styled(TableRow)(({ theme }) => ({
 const StyledPaper = styled(Paper)(({ theme }) => ({
   border: `1px solid ${theme.palette.divider}`,
   borderRadius: 8,
-  boxShadow: "0 10px 30px rgba(15, 23, 42, 0.08)",
+  boxShadow: "0 18px 44px rgba(23, 32, 51, 0.08)",
   overflow: "hidden",
 }));
 
@@ -72,6 +74,7 @@ const EmptyState = styled(Box)(({ theme }) => ({
   color: theme.palette.text.secondary,
   padding: theme.spacing(4),
   textAlign: "center",
+  background: "rgba(255, 255, 255, 0.64)",
 }));
 
 const emptyEditValues = {
@@ -79,25 +82,65 @@ const emptyEditValues = {
   volumeName: "",
 };
 
-const DirectoryTable = ({ directories = [], onDelete, onEdit }) => {
+const DirectoryTable = ({
+  directories = [],
+  onDelete,
+  onEdit,
+  loading = false,
+  title = "Directories",
+  emptyMessage = "No directories to show yet.",
+  serverMode = false,
+  totalCount,
+  page,
+  rowsPerPage,
+  onPageChange,
+  onRowsPerPageChange,
+  onSortChange,
+  rowsPerPageOptions,
+}) => {
   const [order, setOrder] = useState("asc");
   const [orderBy, setOrderBy] = useState("name");
   const [selected, setSelected] = useState([]);
-  const [page, setPage] = useState(0);
+  const [localPage, setLocalPage] = useState(0);
   const [dense, setDense] = useState(false);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [localRowsPerPage, setLocalRowsPerPage] = useState(10);
   const [editingDirectory, setEditingDirectory] = useState(null);
   const [editValues, setEditValues] = useState(emptyEditValues);
   const [savingEdit, setSavingEdit] = useState(false);
   const canEdit = Boolean(onEdit);
   const canSelect = Boolean(onDelete || onEdit);
+  const activePage = serverMode ? page : localPage;
+  const activeRowsPerPage = serverMode ? rowsPerPage : localRowsPerPage;
+  const paginationCount = serverMode ? totalCount ?? directories.length : directories.length;
+  const showExistingVolume = directories.some((directory) => directory.existingVolume);
 
   useEffect(() => {
     setSelected([]);
-  }, [directories, canSelect]);
+  }, [directories, canSelect, activePage]);
+
+  const sortedRows = useMemo(() => {
+    if (serverMode) {
+      return directories;
+    }
+
+    return stableSort(directories, getComparator(order, orderBy), descendingComparator);
+  }, [directories, order, orderBy, serverMode]);
+
+  const visibleRows = useMemo(() => {
+    if (serverMode || activeRowsPerPage === -1) {
+      return sortedRows;
+    }
+
+    return sortedRows.slice(
+      activePage * activeRowsPerPage,
+      activePage * activeRowsPerPage + activeRowsPerPage
+    );
+  }, [activePage, activeRowsPerPage, serverMode, sortedRows]);
+
+  const selectableRows = visibleRows.filter((directory) => directory._id);
 
   const openEdit = (directory) => {
-    if (!canEdit) return;
+    if (!canEdit || !directory) return;
 
     setEditingDirectory(directory);
     setEditValues({
@@ -127,7 +170,7 @@ const DirectoryTable = ({ directories = [], onDelete, onEdit }) => {
   };
 
   const handleEditSelected = () => {
-    const selectedDirectory = directories.find((dir) => dir._id === selected[0]);
+    const selectedDirectory = visibleRows.find((dir) => dir._id === selected[0]);
     openEdit(selectedDirectory);
   };
 
@@ -151,24 +194,29 @@ const DirectoryTable = ({ directories = [], onDelete, onEdit }) => {
 
   const handleRequestSort = (event, property) => {
     const isAsc = orderBy === property && order === "asc";
-    setOrder(isAsc ? "desc" : "asc");
+    const nextOrder = isAsc ? "desc" : "asc";
+
+    setOrder(nextOrder);
     setOrderBy(property);
+    setSelected([]);
+
+    if (serverMode) {
+      onSortChange?.({ sortBy: property, order: nextOrder });
+    }
   };
 
   const handleSelectAllClick = (event) => {
     if (event.target.checked) {
       if (!canSelect) return;
 
-      const newSelected = directories.map((dir) => dir._id).filter(Boolean);
-      setSelected(newSelected);
+      setSelected(selectableRows.map((dir) => dir._id));
       return;
     }
     setSelected([]);
   };
 
   const handleClick = (event, id) => {
-    if (!canSelect) return;
-    if (!id) return;
+    if (!canSelect || !id) return;
 
     const selectedIndex = selected.indexOf(id);
     let newSelected = [];
@@ -190,12 +238,24 @@ const DirectoryTable = ({ directories = [], onDelete, onEdit }) => {
   };
 
   const handleChangePage = (event, newPage) => {
-    setPage(newPage);
+    if (serverMode) {
+      onPageChange?.(event, newPage);
+      return;
+    }
+
+    setLocalPage(newPage);
   };
 
   const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
+    const nextRowsPerPage = Number.parseInt(event.target.value, 10);
+
+    if (serverMode) {
+      onRowsPerPageChange?.(event);
+      return;
+    }
+
+    setLocalRowsPerPage(nextRowsPerPage);
+    setLocalPage(0);
   };
 
   const handleChangeDense = (event) => {
@@ -203,29 +263,22 @@ const DirectoryTable = ({ directories = [], onDelete, onEdit }) => {
   };
 
   const isSelected = (id) => selected.indexOf(id) !== -1;
-
-  const sortedRows = stableSort(
-    directories,
-    getComparator(order, orderBy),
-    descendingComparator
-  );
-
-  const visibleRows = sortedRows.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
-
   const emptyRows =
-    page > 0 ? Math.max(0, (1 + page) * rowsPerPage - directories.length) : 0;
+    !serverMode && activePage > 0 && activeRowsPerPage > 0
+      ? Math.max(0, (1 + activePage) * activeRowsPerPage - directories.length)
+      : 0;
+  const columnCount = (canSelect ? 1 : 0) + 2 + (showExistingVolume ? 1 : 0) + (canEdit ? 1 : 0);
 
-  if (directories.length === 0) {
-    return <EmptyState>No directories to show yet.</EmptyState>;
+  if (!loading && directories.length === 0) {
+    return <EmptyState>{emptyMessage}</EmptyState>;
   }
 
   return (
     <Box sx={{ width: "100%" }}>
       <StyledPaper>
+        {loading && <LinearProgress />}
         <EnhancedTableToolbar
+          title={title}
           numSelected={selected.length}
           onDelete={onDelete ? handleDeleteSelected : undefined}
           onEditSelected={canEdit ? handleEditSelected : undefined}
@@ -243,9 +296,10 @@ const DirectoryTable = ({ directories = [], onDelete, onEdit }) => {
               orderBy={orderBy}
               onSelectAllClick={handleSelectAllClick}
               onRequestSort={handleRequestSort}
-              rowCount={directories.filter((dir) => dir._id).length}
+              rowCount={selectableRows.length}
               showSelection={canSelect}
               showActions={canEdit}
+              showExistingVolume={showExistingVolume}
             />
 
             <TableBody>
@@ -257,8 +311,8 @@ const DirectoryTable = ({ directories = [], onDelete, onEdit }) => {
                   <StyledTableRow
                     hover
                     onClick={(event) => handleClick(event, row._id)}
-                    role="checkbox"
-                    aria-checked={isItemSelected}
+                    role={canSelect ? "checkbox" : undefined}
+                    aria-checked={canSelect ? isItemSelected : undefined}
                     tabIndex={-1}
                     key={row._id || `${row.name}-${index}`}
                     selected={isItemSelected}
@@ -281,7 +335,7 @@ const DirectoryTable = ({ directories = [], onDelete, onEdit }) => {
                       id={labelId}
                       component="th"
                       scope="row"
-                      padding="none"
+                      padding={canSelect ? "none" : "normal"}
                     >
                       {row.name}
                     </StyledTableCell>
@@ -290,9 +344,11 @@ const DirectoryTable = ({ directories = [], onDelete, onEdit }) => {
                       {row.volumeName || "N/A"}
                     </MutedTableCell>
 
-                    <MutedTableCell align="left">
-                      {row.existingVolume || "N/A"}
-                    </MutedTableCell>
+                    {showExistingVolume && (
+                      <MutedTableCell align="left">
+                        {row.existingVolume || "N/A"}
+                      </MutedTableCell>
+                    )}
 
                     {canEdit && (
                       <TableCell align="right">
@@ -317,13 +373,23 @@ const DirectoryTable = ({ directories = [], onDelete, onEdit }) => {
                 );
               })}
 
+              {loading && visibleRows.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={columnCount}>
+                    <Typography color="text.secondary" sx={{ py: 3, textAlign: "center" }}>
+                      Loading directories...
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              )}
+
               {emptyRows > 0 && (
                 <TableRow
                   style={{
                     height: (dense ? 33 : 53) * emptyRows,
                   }}
                 >
-                  <TableCell colSpan={(canSelect ? 1 : 0) + 3 + (canEdit ? 1 : 0)} />
+                  <TableCell colSpan={columnCount} />
                 </TableRow>
               )}
             </TableBody>
@@ -331,11 +397,12 @@ const DirectoryTable = ({ directories = [], onDelete, onEdit }) => {
         </TableContainer>
 
         <Pagination
-          rowsPerPage={rowsPerPage}
-          page={page}
-          count={directories.length}
+          rowsPerPage={activeRowsPerPage}
+          page={activePage}
+          count={paginationCount}
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
+          rowsPerPageOptions={rowsPerPageOptions}
         />
       </StyledPaper>
 

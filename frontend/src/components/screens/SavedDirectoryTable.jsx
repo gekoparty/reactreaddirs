@@ -1,9 +1,9 @@
 import React, { useContext, useState } from "react";
 import axios from "axios";
-import { Alert, Box, Snackbar, Typography } from "@mui/material";
+import { Alert, Snackbar } from "@mui/material";
 import DirectoryTable from "../directoryTable"
-import PermanentDrawerLeft from "../PermanentDrawerLeft";
 import { Store } from "../../store";
+import PageLayout from "../PageLayout";
 
 const SavedDirectoryTable = () => {
   const { state, dispatch } = useContext(Store);
@@ -42,22 +42,17 @@ const SavedDirectoryTable = () => {
   };
 
   return (
-    <Box
-      sx={{
-        px: { xs: 2, md: 4 },
-        py: 4,
-      }}
+    <PageLayout
+      eyebrow="This session"
+      title="Latest saved"
+      subtitle="New directory names saved during the most recent scan."
     >
-      <PermanentDrawerLeft />
-      <Box component="main" sx={{ ml: { md: "240px" }, maxWidth: 1100 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
-          Saved directories
-        </Typography>
-        <Typography color="text.secondary" sx={{ mb: 3 }}>
-          Directories saved during the latest scan.
-        </Typography>
-        <DirectoryTable directories={savedDirectories} onEdit={handleEdit} />
-      </Box>
+      <DirectoryTable
+        title="Saved names"
+        directories={savedDirectories}
+        onEdit={handleEdit}
+        emptyMessage="No directories have been saved in this session yet."
+      />
       <Snackbar
         open={Boolean(feedback)}
         autoHideDuration={4000}
@@ -75,7 +70,7 @@ const SavedDirectoryTable = () => {
           </Alert>
         )}
       </Snackbar>
-    </Box>
+    </PageLayout>
   );
 };
 
