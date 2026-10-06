@@ -286,7 +286,7 @@ const DirectoryTable = ({
 
         <TableContainer>
           <Table
-            sx={{ minWidth: 760 }}
+            sx={{ minWidth: canSelect || canEdit ? 760 : 0 }}
             aria-labelledby="tableTitle"
             size={dense ? "small" : "medium"}
           >
