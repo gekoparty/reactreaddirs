@@ -24,10 +24,12 @@ export default function PageLayout({
         <Box sx={{ maxWidth, mx: "auto" }}>
           <Stack
             direction={{ xs: "column", md: "row" }}
-            justifyContent="space-between"
-            alignItems={{ xs: "stretch", md: "flex-end" }}
             spacing={2}
-            sx={{ mb: 3 }}
+            sx={{
+              alignItems: { xs: "stretch", md: "flex-end" },
+              justifyContent: "space-between",
+              mb: 3,
+            }}
           >
             <Box>
               {eyebrow && (

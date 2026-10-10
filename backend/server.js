@@ -3,6 +3,8 @@ import express from 'express';
 import fastGlob from 'fast-glob';
 import fs from 'fs/promises';
 import path from 'path';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import mongoose from 'mongoose';
 import DirectoryName from './models/directoryNameSchema.js';
 import slugify from 'slugify';
@@ -15,6 +17,7 @@ const port = process.env.PORT || 5000;
 
 const app = express();
 app.use(express.json());
+const execFileAsync = promisify(execFile);
 
 dotenv.config();
 
@@ -109,6 +112,44 @@ function formatDuration(startedAt) {
   return Date.now() - startedAt;
 }
 
+async function chooseFolderOnWindows() {
+  const script = `
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+[System.Windows.Forms.Application]::EnableVisualStyles()
+$owner = New-Object System.Windows.Forms.Form
+$owner.Text = 'Choose folder to scan'
+$owner.StartPosition = 'CenterScreen'
+$owner.Size = New-Object System.Drawing.Size(1, 1)
+$owner.ShowInTaskbar = $true
+$owner.TopMost = $true
+$owner.Opacity = 0
+$owner.Show()
+$owner.Activate()
+$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+$dialog.Description = 'Choose folder to scan'
+$dialog.ShowNewFolderButton = $false
+$dialog.SelectedPath = [Environment]::GetFolderPath('MyComputer')
+$dialog.RootFolder = [System.Environment+SpecialFolder]::MyComputer
+$result = $dialog.ShowDialog($owner)
+$owner.Close()
+$owner.Dispose()
+if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+  [Console]::Out.WriteLine($dialog.SelectedPath)
+} else {
+  [Console]::Out.WriteLine('__CANCELLED__')
+}
+`;
+
+  const { stdout } = await execFileAsync(
+    "powershell.exe",
+    ["-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-Command", script],
+    { timeout: 120000, windowsHide: false }
+  );
+
+  const selectedPath = stdout.trim();
+  return selectedPath === "__CANCELLED__" ? null : selectedPath;
+}
 
 app.get("/api/directories", async (req, res) => {
   const startedAt = Date.now();
@@ -158,6 +199,37 @@ app.get("/api/directories", async (req, res) => {
   } catch (error) {
     console.error("Error fetching directories from database:", error.message);
     res.status(500).json({ error: "Could not search directories." });
+  }
+});
+
+app.post("/api/directories/select-folder", async (req, res) => {
+  const startedAt = Date.now();
+
+  if (process.platform !== "win32") {
+    return res.status(501).json({ error: "Folder picker is only available on Windows right now." });
+  }
+
+  try {
+    const selectedPath = await chooseFolderOnWindows();
+
+    if (!selectedPath) {
+      return res.status(200).json({ cancelled: true, durationMs: formatDuration(startedAt) });
+    }
+
+    res.status(200).json({
+      path: selectedPath,
+      cancelled: false,
+      durationMs: formatDuration(startedAt),
+    });
+  } catch (error) {
+    if (error.killed || error.signal === "SIGTERM") {
+      return res.status(504).json({
+        error: "Folder picker timed out. Try again and check whether the dialog opened behind another window.",
+      });
+    }
+
+    console.error("Error opening folder picker:", error.message);
+    res.status(500).json({ error: "Could not open the folder picker." });
   }
 });
 
@@ -364,8 +436,20 @@ app.post("/api/directories/delete", async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`)
+const server = app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
+
+server.on("error", (error) => {
+  if (error.code === "EADDRINUSE") {
+    console.error(
+      `Port ${port} is already in use. Close the other backend terminal, or use that running backend instead.`
+    );
+    process.exit(1);
+  }
+
+  console.error(error);
+  process.exit(1);
 });
 
 

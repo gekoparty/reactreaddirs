@@ -10,7 +10,7 @@ import SearchTable from "./components/screens/SearchTable";
 function App() {
   return (
     <StoreProvider>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <div className="App">
           <Routes>
             <Route path="/saved-directories" element={<SavedDirectoryTable />} />

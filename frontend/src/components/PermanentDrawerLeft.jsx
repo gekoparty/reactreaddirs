@@ -12,7 +12,6 @@ import {
   ListItem,
   ListItemButton,
   ListItemIcon,
-  ListItemText,
   Toolbar,
   Typography,
 } from "@mui/material";
@@ -125,12 +124,14 @@ export default function PermanentDrawerLeft() {
                 }}
               >
                 <ListItemIcon>{item.icon}</ListItemIcon>
-                <ListItemText
-                  primary={item.label}
-                  secondary={item.description}
-                  primaryTypographyProps={{ fontWeight: 700 }}
-                  secondaryTypographyProps={{ color: "rgba(244, 248, 245, 0.56)" }}
-                />
+                <Box>
+                  <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                    {item.label}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: "rgba(244, 248, 245, 0.56)" }}>
+                    {item.description}
+                  </Typography>
+                </Box>
               </ListItemButton>
             </ListItem>
           ))}

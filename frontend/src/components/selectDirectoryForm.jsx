@@ -53,6 +53,7 @@ const SelectDirectoryForm = () => {
   const [feedback, setFeedback] = useState(null);
   const [scanMeta, setScanMeta] = useState(null);
   const [saveSummary, setSaveSummary] = useState(null);
+  const [choosingDirectory, setChoosingDirectory] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -70,6 +71,47 @@ const SelectDirectoryForm = () => {
     setSaveSummary(null);
     setFeedback(null);
     setViewMode("scanned");
+  };
+
+  const chooseDirectory = async () => {
+    setChoosingDirectory(true);
+    setFeedback({
+      severity: "info",
+      message: "Opening folder picker...",
+    });
+
+    try {
+      const response = await axios.post("/api/directories/select-folder", null, {
+        timeout: 125000,
+      });
+
+      if (response.data.cancelled) {
+        setFeedback({
+          severity: "info",
+          message: "Folder selection cancelled.",
+        });
+        return;
+      }
+
+      resetArrays();
+      setScanMeta(null);
+      setSaveSummary(null);
+      setViewMode("scanned");
+      setScanPath(response.data.path || "");
+      setFeedback({
+        severity: "success",
+        message: "Folder selected. Add a volume name, then scan.",
+      });
+    } catch (error) {
+      setFeedback({
+        severity: "error",
+        message:
+          error.response?.data?.error ||
+          "Could not open the folder picker. Try again and check the taskbar.",
+      });
+    } finally {
+      setChoosingDirectory(false);
+    }
   };
 
   const scanDirectory = async (event) => {
@@ -212,7 +254,7 @@ const SelectDirectoryForm = () => {
     <PageLayout
       eyebrow="Add to database"
       title="Scan folders"
-      subtitle="Pick a volume label and folder path. The backend scans the folder tree, then saves only new names after one batched database check."
+      subtitle="Pick a volume label and choose a folder. The backend scans the folder tree, then saves only new names after one batched database check."
     >
       <Paper
         component="form"
@@ -225,13 +267,18 @@ const SelectDirectoryForm = () => {
           bgcolor: "rgba(255, 255, 255, 0.86)",
         }}
       >
-        {(scanning || saving) && <LinearProgress sx={{ mx: -3, mt: -3, mb: 3 }} />}
-        <Stack direction={{ xs: "column", lg: "row" }} spacing={2} alignItems="stretch">
+        {(choosingDirectory || scanning || saving) && <LinearProgress sx={{ mx: -3, mt: -3, mb: 3 }} />}
+        <Stack
+          direction={{ xs: "column", lg: "row" }}
+          spacing={2}
+          sx={{ alignItems: "stretch" }}
+        >
           <TextField
             label="Volume name"
             value={volumeName}
             onChange={(event) => setVolumeName(event.target.value)}
             placeholder="Example: HDD 8"
+            disabled={choosingDirectory || scanning || saving}
             sx={{ minWidth: { lg: 220 } }}
           />
           <TextField
@@ -239,23 +286,35 @@ const SelectDirectoryForm = () => {
             value={scanPath}
             onChange={(event) => setScanPath(event.target.value)}
             placeholder="Example: G:\\Movies"
+            disabled={choosingDirectory || scanning || saving}
             sx={{ flex: 1 }}
           />
+          <Button
+            type="button"
+            variant="outlined"
+            startIcon={<FolderOpenIcon />}
+            onClick={chooseDirectory}
+            disabled={choosingDirectory || scanning || saving}
+            sx={{ minWidth: 170 }}
+          >
+            Choose folder
+          </Button>
           <Button
             type="submit"
             variant="contained"
             startIcon={<FolderOpenIcon />}
-            disabled={scanning || saving}
+            disabled={choosingDirectory || scanning || saving}
             sx={{ minWidth: 150 }}
           >
             Scan
           </Button>
           <Button
+            type="button"
             variant="outlined"
             color="inherit"
             startIcon={<RestartAltIcon />}
             onClick={resetWorkflow}
-            disabled={scanning || saving}
+            disabled={choosingDirectory || scanning || saving}
           >
             Clear
           </Button>
@@ -300,10 +359,12 @@ const SelectDirectoryForm = () => {
 
       <Stack
         direction={{ xs: "column", md: "row" }}
-        justifyContent="space-between"
-        alignItems={{ xs: "stretch", md: "center" }}
         spacing={2}
-        sx={{ mb: 2 }}
+        sx={{
+          alignItems: { xs: "stretch", md: "center" },
+          justifyContent: "space-between",
+          mb: 2,
+        }}
       >
         <Tabs value={viewMode} onChange={(event, value) => setViewMode(value)}>
           <Tab label={saveSummary ? "Saved new" : "Scanned"} value="scanned" />

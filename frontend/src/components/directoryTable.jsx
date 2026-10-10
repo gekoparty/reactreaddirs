@@ -324,8 +324,10 @@ const DirectoryTable = ({
                           color="primary"
                           checked={isItemSelected}
                           disabled={!row._id}
-                          inputProps={{
-                            "aria-labelledby": labelId,
+                          slotProps={{
+                            input: {
+                              "aria-labelledby": labelId,
+                            },
                           }}
                         />
                       </TableCell>
